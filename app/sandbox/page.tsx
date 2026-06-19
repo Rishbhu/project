@@ -41,10 +41,11 @@ const C = {
 } as const;
 
 const TOOL_META: Record<string, { label: string; color: string; dot: string; bg: string; border: string; leftColor: string }> = {
-  analyze_candidate_signal:  { label: "Agent Brain",          color: "#6d28d9", dot: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe", leftColor: "#7c3aed" },
-  search_candidate_profile:  { label: "Profile Synthesis",   color: "#1d4ed8", dot: "#2563eb", bg: "#eff6ff", border: "#bfdbfe", leftColor: "#2563eb" },
+  analyze_candidate_signal:  { label: "Signal Analysis",     color: "#6d28d9", dot: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe", leftColor: "#7c3aed" },
+  plan_next_moves:           { label: "Conversation Plan",   color: "#0369a1", dot: "#0284c7", bg: "#f0f9ff", border: "#bae6fd", leftColor: "#0284c7" },
+  search_candidate_profile:  { label: "Profile Synthesis",  color: "#1d4ed8", dot: "#2563eb", bg: "#eff6ff", border: "#bfdbfe", leftColor: "#2563eb" },
   get_role_market_insights:  { label: "Market Intelligence", color: "#047857", dot: "#059669", bg: "#ecfdf5", border: "#a7f3d0", leftColor: "#059669" },
-  get_company_talking_points:{ label: "Talking Points",      color: "#b45309", dot: "#d97706", bg: "#fffbeb", border: "#fde68a", leftColor: "#d97706" },
+  get_company_talking_points:{ label: "Talking Points",     color: "#b45309", dot: "#d97706", bg: "#fffbeb", border: "#fde68a", leftColor: "#d97706" },
 };
 
 const QUICK_REPLIES = [
@@ -326,6 +327,149 @@ function AgentBrainCard({ r }: { r: Record<string, unknown> }) {
   );
 }
 
+const PHASE_STYLE: Record<string, { color: string; bg: string; border: string }> = {
+  "Opening":              { color: "#4338ca", bg: "#f0f1ff", border: "#c7caef" },
+  "Discovery":            { color: "#0369a1", bg: "#f0f9ff", border: "#bae6fd" },
+  "Pitching":             { color: "#6d28d9", bg: "#f5f3ff", border: "#ddd6fe" },
+  "Handling objections":  { color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
+  "Qualifying":           { color: "#b45309", bg: "#fffbeb", border: "#fde68a" },
+  "Moving to schedule":   { color: "#047857", bg: "#f0fdf4", border: "#bbf7d0" },
+  "Disengaging":          { color: "#4b5563", bg: "#f9fafb", border: "#e5e7eb" },
+};
+
+function ConversationPlanCard({ r }: { r: Record<string, unknown> }) {
+  const phase              = (r.conversationPhase as string) || "Discovery";
+  const goal               = (r.conversationGoal as string) || "—";
+  const summary            = (r.candidateSummary as string) || "";
+  const currentTactic      = (r.currentTactic as string) || "—";
+  const nextMove           = (r.nextMove as string) || "—";
+  const contingencyMove    = (r.contingencyMove as string) || "—";
+  const openQuestions      = (r.openQuestions as string[]) || [];
+  const addressed          = (r.addressedObjections as string[]) || [];
+  const unresolved         = (r.unresolvedObjections as string[]) || [];
+  const strategyPivot      = (r.strategyPivot as string) || "";
+  const turnsToGoal        = r.turnsEstimatedToGoal as number | undefined;
+  const phaseStyle         = PHASE_STYLE[phase] || PHASE_STYLE["Discovery"];
+  const hasPivot           = strategyPivot && strategyPivot !== "none" && strategyPivot.toLowerCase() !== "none";
+
+  return (
+    <div className="rounded-xl overflow-hidden animate-slide-up"
+      style={{ border: "1px solid #bae6fd", borderLeftWidth: 3, borderLeftColor: "#0284c7" }}>
+
+      {/* Header */}
+      <div className="px-3 py-2 flex items-center justify-between gap-2" style={{ background: "#f0f9ff" }}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[9px] font-mono font-bold uppercase tracking-widest flex-shrink-0" style={{ color: "#0284c7" }}>
+            Conversation Plan
+          </span>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full truncate"
+            style={{ background: phaseStyle.bg, color: phaseStyle.color, border: `1px solid ${phaseStyle.border}` }}>
+            {phase}
+          </span>
+        </div>
+        {turnsToGoal !== undefined && turnsToGoal > 0 && (
+          <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "#0369a1" }}>
+            ~{turnsToGoal} turn{turnsToGoal !== 1 ? "s" : ""} to goal
+          </span>
+        )}
+        {turnsToGoal === 0 && (
+          <span className="text-[10px] font-semibold flex-shrink-0" style={{ color: "#047857" }}>goal reached</span>
+        )}
+      </div>
+
+      {/* Strategy pivot warning */}
+      {hasPivot && (
+        <div className="px-3 py-2" style={{ background: "#fffbeb", borderTop: "1px solid #fde68a" }}>
+          <p className="text-[9px] font-mono font-bold uppercase tracking-widest mb-0.5" style={{ color: "#b45309" }}>Strategy shift</p>
+          <p className="text-[11px]" style={{ color: "#92400e" }}>{strategyPivot}</p>
+        </div>
+      )}
+
+      {/* Body */}
+      <div className="p-3 space-y-2.5" style={{ background: "#fafeff" }}>
+
+        {/* Goal */}
+        <div>
+          <p className="text-[9px] font-mono font-semibold uppercase tracking-widest mb-1" style={{ color: "#9ca3af" }}>
+            Conversation goal
+          </p>
+          <p className="text-[11px] font-semibold leading-snug" style={{ color: "#0f1117" }}>{goal}</p>
+        </div>
+
+        {/* Candidate model */}
+        {summary && (
+          <div>
+            <p className="text-[9px] font-mono font-semibold uppercase tracking-widest mb-1" style={{ color: "#9ca3af" }}>
+              Candidate model
+            </p>
+            <p className="text-[11px] leading-relaxed" style={{ color: "#4b5675" }}>{summary}</p>
+          </div>
+        )}
+
+        {/* This turn */}
+        <div>
+          <p className="text-[9px] font-mono font-semibold uppercase tracking-widest mb-1" style={{ color: "#9ca3af" }}>
+            This turn
+          </p>
+          <p className="text-[11px] leading-relaxed" style={{ color: "#0f1117" }}>{currentTactic}</p>
+        </div>
+
+        {/* Next moves */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="px-2.5 py-2 rounded-lg" style={{ background: "#e0f2fe", border: "1px solid #bae6fd" }}>
+            <p className="text-[9px] font-mono font-bold uppercase tracking-widest mb-1" style={{ color: "#0369a1" }}>Next move</p>
+            <p className="text-[10px] leading-relaxed" style={{ color: "#0c4a6e" }}>{nextMove}</p>
+          </div>
+          <div className="px-2.5 py-2 rounded-lg" style={{ background: "#fef3c7", border: "1px solid #fde68a" }}>
+            <p className="text-[9px] font-mono font-bold uppercase tracking-widest mb-1" style={{ color: "#b45309" }}>If resistance</p>
+            <p className="text-[10px] leading-relaxed" style={{ color: "#78350f" }}>{contingencyMove}</p>
+          </div>
+        </div>
+
+        {/* Open questions */}
+        {openQuestions.length > 0 && (
+          <div>
+            <p className="text-[9px] font-mono font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#9ca3af" }}>
+              Open questions
+            </p>
+            <div className="flex flex-col gap-1">
+              {openQuestions.map((q, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <span className="text-[9px] mt-0.5 flex-shrink-0" style={{ color: "#0284c7" }}>?</span>
+                  <span className="text-[10px] leading-relaxed" style={{ color: "#374151" }}>{q}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Objection tracking */}
+        {(addressed.length > 0 || unresolved.length > 0) && (
+          <div>
+            <p className="text-[9px] font-mono font-semibold uppercase tracking-widest mb-1.5" style={{ color: "#9ca3af" }}>
+              Objection tracker
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {addressed.map((o, i) => (
+                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full line-through"
+                  style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#6b7280" }}>
+                  {o}
+                </span>
+              ))}
+              {unresolved.map((o, i) => (
+                <span key={i} className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#b45309" }}>
+                  {o}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TraceStep({ step }: { step: ReActStep }) {
   const [open, setOpen] = useState(false);
   const meta = step.tool ? TOOL_META[step.tool] : null;
@@ -345,16 +489,35 @@ function TraceStep({ step }: { step: ReActStep }) {
         style={{ background: "#f5f3ff", border: "1px solid #ddd6fe", borderLeftWidth: 2, borderLeftColor: "#7c3aed" }}>
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#7c3aed" }} />
-          <span className="text-xs font-semibold" style={{ color: "#6d28d9" }}>Agent Brain</span>
+          <span className="text-xs font-semibold" style={{ color: "#6d28d9" }}>Signal Analysis</span>
           <span className="text-xs font-mono" style={{ color: C.textMuted }}>classifying candidate state…</span>
         </div>
       </div>
     );
   }
 
-  // analyze_candidate_signal observation → full Agent Brain card
+  // analyze_candidate_signal observation → Agent Brain card
   if (step.type === "observation" && step.tool === "analyze_candidate_signal") {
     return <AgentBrainCard r={step.result || {}} />;
+  }
+
+  // plan_next_moves action → minimal label
+  if (step.type === "action" && step.tool === "plan_next_moves") {
+    return (
+      <div className="px-3 py-2.5 rounded-lg animate-slide-up"
+        style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderLeftWidth: 2, borderLeftColor: "#0284c7" }}>
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#0284c7" }} />
+          <span className="text-xs font-semibold" style={{ color: "#0369a1" }}>Conversation Plan</span>
+          <span className="text-xs font-mono" style={{ color: C.textMuted }}>planning next moves…</span>
+        </div>
+      </div>
+    );
+  }
+
+  // plan_next_moves observation → Conversation Plan card
+  if (step.type === "observation" && step.tool === "plan_next_moves") {
+    return <ConversationPlanCard r={step.result || {}} />;
   }
 
   // Generic action
@@ -653,7 +816,7 @@ export default function SandboxPage() {
                     <button onClick={() => toggleTrace(i)} className="flex items-center gap-2 text-xs mb-1.5 transition-colors"
                       style={{ color: C.textMuted }}>
                       <span style={{ color: msg.traceOpen ? C.indigo : C.textMuted }}>{msg.traceOpen ? "▼" : "►"}</span>
-                      <span>Agent Brain trace — {msg.trace.filter((s) => s.type === "action").length} tool call{msg.trace.filter((s) => s.type === "action").length !== 1 ? "s" : ""}</span>
+                      <span>Agent trace — {msg.trace.filter((s) => s.type === "action").length} tool call{msg.trace.filter((s) => s.type === "action").length !== 1 ? "s" : ""}</span>
                       <div className="flex gap-0.5 ml-1">
                         {msg.trace.filter((s) => s.type === "action").map((s, j) => {
                           const m = s.tool ? TOOL_META[s.tool] : null;
@@ -693,7 +856,7 @@ export default function SandboxPage() {
               <div className="max-w-[78%] space-y-2">
                 <div className="flex items-center gap-2 text-xs mb-1.5" style={{ color: C.textMuted }}>
                   <span className="animate-pulse" style={{ color: C.indigo }}>►</span>
-                  <span className="animate-pulse">Classifying candidate state</span>
+                  <span className="animate-pulse">Analyzing · planning next moves</span>
                   <span className="cursor-blink" />
                 </div>
                 {liveTrace.length === 0 ? (
