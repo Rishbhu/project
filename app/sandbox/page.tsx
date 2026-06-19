@@ -5,12 +5,7 @@ import { useRouter } from "next/navigation";
 
 interface AgentConfig {
   agentName: string;
-  personality: {
-    traits: string[];
-    style: string;
-    avoid: string[];
-  };
-  reasoning: string;
+  personality: { traits: string[]; style: string; avoid: string[] };
   messages: Array<{ label: string; content: string }>;
 }
 
@@ -18,20 +13,138 @@ interface CompanyContext {
   companyName: string;
   whatTheyDo: string;
   culture: string;
-  candidateProfile: {
-    jobTitle: string;
-    seniorityLevel: string;
-    keySkills: string;
-  };
+  candidateProfile: { jobTitle: string; seniorityLevel: string; keySkills: string };
   tone: string;
+}
+
+interface ReActStep {
+  type: "thought" | "action" | "observation";
+  content?: string;
+  tool?: string;
+  input?: Record<string, unknown>;
+  result?: Record<string, unknown>;
 }
 
 interface ChatMessage {
   role: "agent" | "candidate";
   content: string;
-  thinking?: string;
-  thinkingOpen?: boolean;
-  streaming?: boolean;
+  trace?: ReActStep[];
+  traceOpen?: boolean;
+}
+
+const TOOL_META: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  analyze_candidate_signal: {
+    label: "Signal Analysis",
+    color: "text-violet-400",
+    bg: "bg-violet-500/5",
+    border: "border-violet-500/15",
+    dot: "bg-violet-400",
+  },
+  search_candidate_profile: {
+    label: "Profile Synthesis",
+    color: "text-blue-400",
+    bg: "bg-blue-500/5",
+    border: "border-blue-500/15",
+    dot: "bg-blue-400",
+  },
+  get_role_market_insights: {
+    label: "Market Intelligence",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/5",
+    border: "border-emerald-500/15",
+    dot: "bg-emerald-400",
+  },
+  get_company_talking_points: {
+    label: "Talking Points",
+    color: "text-amber-400",
+    bg: "bg-amber-500/5",
+    border: "border-amber-500/15",
+    dot: "bg-amber-400",
+  },
+};
+
+function TraceStep({ step, index }: { step: ReActStep; index: number }) {
+  const [open, setOpen] = useState(false);
+  const meta = step.tool ? TOOL_META[step.tool] : null;
+
+  if (step.type === "thought") {
+    return (
+      <div className="py-2 px-3 bg-[#0d0d0d] rounded-lg border border-[#161616]">
+        <p className="text-xs font-mono text-[#3b3b3b] mb-1 uppercase tracking-wider">Reasoning</p>
+        <p className="text-xs font-mono text-[#4b5563] leading-relaxed">{step.content}</p>
+      </div>
+    );
+  }
+
+  if (step.type === "action" && meta) {
+    const keyInputs = Object.entries(step.input || {})
+      .filter(([k]) => !["role", "seniority"].includes(k))
+      .slice(0, 3);
+
+    return (
+      <div className={`${meta.bg} border ${meta.border} rounded-lg px-3 py-2`}>
+        <div className="flex items-center gap-2">
+          <div className={`w-1 h-1 rounded-full ${meta.dot}`} />
+          <span className={`text-xs font-mono font-medium ${meta.color}`}>{meta.label}</span>
+          <span className="text-xs font-mono text-[#2a2a2a]">→ called</span>
+        </div>
+        {keyInputs.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {keyInputs.map(([k, v]) => (
+              <span key={k} className="text-xs font-mono text-[#3b3b3b]">
+                {k}: <span className="text-[#4b5563]">{String(v)}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (step.type === "observation" && meta) {
+    const summaryKeys = Object.keys(step.result || {}).slice(0, 3);
+    return (
+      <div className="border border-[#1a1a1a] rounded-lg overflow-hidden">
+        <button
+          onClick={() => setOpen(!open)}
+          className="w-full flex items-center justify-between px-3 py-2 hover:bg-[#0f0f0f] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-[#2a2a2a]">└</span>
+            <span className={`text-xs font-mono ${meta.color}`}>✓ {meta.label}</span>
+            <span className="text-xs font-mono text-[#2a2a2a]">
+              {summaryKeys.join(", ")}
+            </span>
+          </div>
+          <span className="text-xs font-mono text-[#2a2a2a]">
+            {open ? "−" : "+"}
+          </span>
+        </button>
+        {open && (
+          <div className="px-3 pb-3 border-t border-[#161616]">
+            <pre className="mt-2 text-xs font-mono text-[#3b3b3b] leading-relaxed whitespace-pre-wrap overflow-x-auto">
+              {JSON.stringify(step.result, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function LiveTraceBlock({ steps }: { steps: ReActStep[] }) {
+  if (steps.length === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      {steps.map((step, i) => (
+        <div key={i} className="animate-fade-in">
+          <TraceStep step={step} index={i} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function SandboxPage() {
@@ -41,8 +154,8 @@ export default function SandboxPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isReplying, setIsReplying] = useState(false);
-  const [streamingThinking, setStreamingThinking] = useState("");
-  const [streamingReply, setStreamingReply] = useState("");
+  const [liveTrace, setLiveTrace] = useState<ReActStep[]>([]);
+  const [agentCount, setAgentCount] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -57,19 +170,12 @@ export default function SandboxPage() {
     const cfg: AgentConfig = JSON.parse(cfgRaw);
     setCompanyContext(ctx);
     setAgentConfig(cfg);
-    setMessages([
-      {
-        role: "agent",
-        content: cfg.messages[0].content,
-        thinking: undefined,
-        thinkingOpen: false,
-      },
-    ]);
+    setMessages([{ role: "agent", content: cfg.messages[0].content, trace: [], traceOpen: false }]);
   }, [router]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingThinking, streamingReply]);
+  }, [messages, liveTrace]);
 
   async function handleSend() {
     if (!input.trim() || isReplying || !agentConfig || !companyContext) return;
@@ -77,36 +183,31 @@ export default function SandboxPage() {
     const candidateMsg = input.trim();
     setInput("");
     setIsReplying(true);
-    setStreamingThinking("");
-    setStreamingReply("");
+    setLiveTrace([]);
 
-    setMessages((prev) => [...prev, { role: "candidate", content: candidateMsg }]);
-
-    // Build conversation history for API
-    const history = [
-      ...messages.map((m) => ({
-        role: m.role === "agent" ? "assistant" : "user",
-        content: m.content,
-      })),
-      { role: "user", content: candidateMsg },
+    const updatedMessages: ChatMessage[] = [
+      ...messages,
+      { role: "candidate", content: candidateMsg },
     ];
+    setMessages(updatedMessages);
+
+    const history = updatedMessages.map((m) => ({
+      role: m.role === "agent" ? "assistant" : "user",
+      content: m.content,
+    }));
 
     try {
       const res = await fetch("/api/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          conversationHistory: history,
-          agentConfig,
-          companyContext,
-        }),
+        body: JSON.stringify({ conversationHistory: history, agentConfig, companyContext }),
       });
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let finalResult: { thinking: string; reply: string } | null = null;
-      let accumulated = "";
+      const currentTrace: ReActStep[] = [];
+      let finalReply = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -120,60 +221,53 @@ export default function SandboxPage() {
           if (!line.startsWith("data: ")) continue;
           try {
             const data = JSON.parse(line.slice(6));
-            if (data.error) throw new Error(data.error);
-            if (data.done && data.result) {
-              finalResult = data.result;
-            } else if (data.chunk) {
-              accumulated += data.chunk;
-              // Try to extract thinking/reply from partial JSON for progressive display
-              const thinkingMatch = accumulated.match(/"thinking"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-              const replyMatch = accumulated.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-              if (thinkingMatch) {
-                setStreamingThinking(thinkingMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'));
-              }
-              if (replyMatch) {
-                setStreamingReply(replyMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'));
-              }
+
+            if (data.type === "thought") {
+              currentTrace.push({ type: "thought", content: data.content });
+              setLiveTrace([...currentTrace]);
+            } else if (data.type === "action") {
+              currentTrace.push({ type: "action", tool: data.tool, input: data.input });
+              setLiveTrace([...currentTrace]);
+            } else if (data.type === "observation") {
+              currentTrace.push({ type: "observation", tool: data.tool, result: data.result });
+              setLiveTrace([...currentTrace]);
+            } else if (data.type === "reply" && data.done) {
+              finalReply = data.content;
+            } else if (data.type === "error") {
+              finalReply = "Something went wrong. Please try again.";
             }
           } catch {
-            // partial JSON — continue accumulating
+            // partial JSON line
           }
         }
       }
 
-      if (finalResult) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "agent",
-            content: finalResult!.reply,
-            thinking: finalResult!.thinking,
-            thinkingOpen: false,
-          },
-        ]);
-      }
-    } catch (err) {
-      console.error(err);
       setMessages((prev) => [
         ...prev,
         {
           role: "agent",
-          content: "Something went wrong. Please try again.",
+          content: finalReply,
+          trace: currentTrace,
+          traceOpen: false,
         },
+      ]);
+      setAgentCount((c) => c + 1);
+    } catch (err) {
+      console.error(err);
+      setMessages((prev) => [
+        ...prev,
+        { role: "agent", content: "Something went wrong. Please try again." },
       ]);
     } finally {
       setIsReplying(false);
-      setStreamingThinking("");
-      setStreamingReply("");
+      setLiveTrace([]);
       inputRef.current?.focus();
     }
   }
 
-  function toggleThinking(index: number) {
+  function toggleTrace(index: number) {
     setMessages((prev) =>
-      prev.map((m, i) =>
-        i === index ? { ...m, thinkingOpen: !m.thinkingOpen } : m
-      )
+      prev.map((m, i) => (i === index ? { ...m, traceOpen: !m.traceOpen } : m))
     );
   }
 
@@ -186,80 +280,94 @@ export default function SandboxPage() {
 
   if (!agentConfig || !companyContext) return null;
 
+  const agentReplies = messages.filter((m) => m.role === "agent").length;
+
   return (
-    <div className="h-screen flex flex-col md:flex-row overflow-hidden">
+    <div className="h-screen flex flex-col md:flex-row overflow-hidden bg-[#0a0a0a]">
       {/* Left Panel */}
-      <div className="w-full md:w-80 lg:w-96 bg-[#0d0d0d] border-b md:border-b-0 md:border-r border-[#1a1a1a] flex flex-col overflow-y-auto md:overflow-hidden">
-        <div className="p-5 border-b border-[#1a1a1a]">
+      <div className="w-full md:w-72 lg:w-80 bg-[#0d0d0d] border-b md:border-b-0 md:border-r border-[#161616] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-[#161616] flex-shrink-0">
           <button
             onClick={() => router.push("/agent")}
-            className="text-xs text-[#4b5563] hover:text-[#6b7280] transition-colors mb-5 block"
+            className="text-xs text-[#2a2a2a] hover:text-[#4b5563] transition-colors mb-4 block"
           >
-            ← Back to agent
+            ← Agent config
           </button>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-xs font-mono text-emerald-400 uppercase tracking-wider">
-              Live Simulation
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#3b82f6]/10 border border-[#3b82f6]/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-bold text-[#3b82f6]">
+                {agentConfig.agentName[0]}
+              </span>
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+                <p className="text-sm font-medium text-white">{agentConfig.agentName}</p>
+              </div>
+              <p className="text-xs text-[#3b3b3b]">{companyContext.companyName}</p>
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-white">{agentConfig.agentName}</h2>
-          <p className="text-xs text-[#4b5563] mt-0.5">for {companyContext.companyName}</p>
         </div>
 
-        {/* Agent Identity */}
-        <div className="p-5 border-b border-[#1a1a1a]">
-          <p className="text-xs text-[#3b3b3b] uppercase tracking-wider mb-3">Agent profile</p>
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {agentConfig.personality.traits.map((t, i) => (
-              <span
-                key={i}
-                className="text-xs px-2 py-0.5 bg-[#111111] border border-[#2a2a2a] rounded-full text-[#6b7280]"
-              >
-                {t}
-              </span>
-            ))}
+        {/* Stats */}
+        <div className="px-5 py-3 border-b border-[#161616] flex-shrink-0">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center">
+              <p className="text-base font-bold text-white">{agentReplies}</p>
+              <p className="text-xs text-[#3b3b3b]">Replies</p>
+            </div>
+            <div className="text-center">
+              <p className="text-base font-bold text-white">{agentCount * 2 + agentCount}</p>
+              <p className="text-xs text-[#3b3b3b]">Tool calls</p>
+            </div>
+            <div className="text-center">
+              <p className="text-base font-bold text-[#3b82f6]">{companyContext.tone[0]}</p>
+              <p className="text-xs text-[#3b3b3b]">Tone</p>
+            </div>
           </div>
-          <p className="text-xs text-[#4b5563] leading-relaxed">
-            {agentConfig.personality.style}
-          </p>
         </div>
 
         {/* Candidate Profile */}
-        <div className="p-5 border-b border-[#1a1a1a]">
-          <p className="text-xs text-[#3b3b3b] uppercase tracking-wider mb-3">Candidate profile</p>
-          <div className="space-y-1.5">
-            <p className="text-xs">
-              <span className="text-[#3b3b3b]">Role: </span>
-              <span className="text-[#6b7280]">{companyContext.candidateProfile.jobTitle}</span>
+        <div className="px-5 py-4 border-b border-[#161616] flex-shrink-0">
+          <p className="text-xs text-[#2a2a2a] uppercase tracking-wider mb-3">Simulating</p>
+          <div className="space-y-2">
+            <p className="text-xs text-[#6b7280] font-medium">
+              {companyContext.candidateProfile.seniorityLevel} {companyContext.candidateProfile.jobTitle}
             </p>
-            <p className="text-xs">
-              <span className="text-[#3b3b3b]">Level: </span>
-              <span className="text-[#6b7280]">{companyContext.candidateProfile.seniorityLevel}</span>
-            </p>
-            <p className="text-xs">
-              <span className="text-[#3b3b3b]">Skills: </span>
-              <span className="text-[#6b7280]">{companyContext.candidateProfile.keySkills}</span>
+            <p className="text-xs text-[#3b3b3b] leading-relaxed">
+              {companyContext.candidateProfile.keySkills}
             </p>
           </div>
         </div>
 
-        {/* Message Sequence */}
-        <div className="p-5 flex-1 overflow-y-auto">
-          <p className="text-xs text-[#3b3b3b] uppercase tracking-wider mb-3">Sequence</p>
+        {/* Sequence tracker */}
+        <div className="px-5 py-4 flex-1 overflow-y-auto">
+          <p className="text-xs text-[#2a2a2a] uppercase tracking-wider mb-3">Sequence</p>
           <div className="space-y-3">
             {agentConfig.messages.map((msg, i) => {
-              const sent = i === 0 || messages.filter((m) => m.role === "agent").length > i;
+              const sent = i < agentReplies;
+              const active = i === agentReplies - 1;
               return (
                 <div key={i} className="relative pl-4">
                   <div
-                    className={`absolute left-0 top-1.5 w-1.5 h-1.5 rounded-full transition-colors ${sent ? "bg-[#3b82f6]" : "bg-[#2a2a2a]"}`}
+                    className={`absolute left-0 top-1.5 w-1.5 h-1.5 rounded-full transition-all duration-500 ${
+                      active
+                        ? "bg-[#3b82f6] shadow-sm shadow-[#3b82f6]/50"
+                        : sent
+                        ? "bg-[#3b82f6]/40"
+                        : "bg-[#1e1e1e]"
+                    }`}
                   />
-                  <p className={`text-xs font-medium mb-0.5 ${sent ? "text-[#3b82f6]" : "text-[#3b3b3b]"}`}>
+                  <p
+                    className={`text-xs font-medium mb-0.5 ${
+                      active ? "text-[#3b82f6]" : sent ? "text-[#3b3b3b]" : "text-[#222222]"
+                    }`}
+                  >
                     {msg.label}
                   </p>
-                  <p className="text-xs text-[#3b3b3b] line-clamp-2 leading-relaxed">
-                    {msg.content.slice(0, 80)}...
+                  <p className="text-xs text-[#2a2a2a] line-clamp-2 leading-relaxed">
+                    {msg.content.slice(0, 60)}...
                   </p>
                 </div>
               );
@@ -268,46 +376,57 @@ export default function SandboxPage() {
         </div>
       </div>
 
-      {/* Right Panel - Chat */}
+      {/* Right Panel */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Chat header */}
-        <div className="px-6 py-4 border-b border-[#1a1a1a] flex items-center justify-between flex-shrink-0">
+        <div className="px-6 py-4 border-b border-[#161616] flex items-center justify-between flex-shrink-0">
           <div>
-            <p className="text-sm font-medium text-white">Conversation</p>
-            <p className="text-xs text-[#4b5563]">
-              Simulating a {companyContext.candidateProfile.jobTitle}
+            <p className="text-sm font-medium text-white">Conversation Sandbox</p>
+            <p className="text-xs text-[#3b3b3b]">
+              ReAct agent · {TOOL_META ? Object.keys(TOOL_META).length : 4} tools active
             </p>
           </div>
-          <span className="text-xs font-mono text-[#3b82f6] bg-[#3b82f6]/10 px-2.5 py-1 rounded-full">
-            {companyContext.tone}
-          </span>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs text-[#3b3b3b]">Live</span>
+          </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
           {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex animate-fade-in ${msg.role === "candidate" ? "justify-end" : "justify-start"}`}
-            >
-              <div className={`max-w-[80%] space-y-2 ${msg.role === "candidate" ? "items-end" : "items-start"} flex flex-col`}>
-                {/* Thinking block */}
-                {msg.role === "agent" && msg.thinking && (
+            <div key={i} className={`flex animate-fade-in ${msg.role === "candidate" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[78%] flex flex-col gap-2 ${msg.role === "candidate" ? "items-end" : "items-start"}`}>
+                {/* ReAct trace toggle */}
+                {msg.role === "agent" && msg.trace && msg.trace.length > 0 && (
                   <div className="w-full">
                     <button
-                      onClick={() => toggleThinking(i)}
-                      className="flex items-center gap-2 text-xs font-mono text-[#4b5563] hover:text-[#6b7280] transition-colors mb-1"
+                      onClick={() => toggleTrace(i)}
+                      className="flex items-center gap-2 text-xs font-mono text-[#2a2a2a] hover:text-[#4b5563] transition-colors mb-1 group"
                     >
-                      <span className="text-[#3b82f6]">
-                        {msg.thinkingOpen ? "▼" : "►"}
+                      <span className="text-[#3b82f6]/40 group-hover:text-[#3b82f6]/70 transition-colors">
+                        {msg.traceOpen ? "▼" : "►"}
                       </span>
-                      Agent thinking...
+                      <span>
+                        ReAct trace — {msg.trace.filter((s) => s.type === "action").length} tool call
+                        {msg.trace.filter((s) => s.type === "action").length !== 1 ? "s" : ""}
+                      </span>
+                      <div className="flex gap-0.5 ml-1">
+                        {msg.trace
+                          .filter((s) => s.type === "action")
+                          .map((s, j) => {
+                            const m = s.tool ? TOOL_META[s.tool] : null;
+                            return m ? (
+                              <div key={j} className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
+                            ) : null;
+                          })}
+                      </div>
                     </button>
-                    {msg.thinkingOpen && (
-                      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 mb-2">
-                        <pre className="text-xs font-mono text-[#4b5563] leading-relaxed whitespace-pre-wrap">
-                          {msg.thinking}
-                        </pre>
+                    {msg.traceOpen && (
+                      <div className="mb-2 space-y-1.5 animate-fade-in">
+                        {msg.trace.map((step, j) => (
+                          <TraceStep key={j} step={step} index={j} />
+                        ))}
                       </div>
                     )}
                   </div>
@@ -315,56 +434,47 @@ export default function SandboxPage() {
 
                 {/* Message bubble */}
                 <div
-                  className={`px-4 py-3 rounded-xl text-sm leading-relaxed ${
+                  className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                     msg.role === "agent"
-                      ? "bg-[#111111] border border-[#222222] text-[#d1d5db]"
-                      : "bg-[#3b82f6]/90 text-white"
+                      ? "bg-[#111111] border border-[#1e1e1e] text-[#c9d1d9] rounded-tl-sm"
+                      : "bg-[#3b82f6] text-white rounded-tr-sm"
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 </div>
 
-                <p className="text-xs text-[#3b3b3b] px-1">
-                  {msg.role === "agent" ? agentConfig.agentName : "You"}
+                <p className="text-xs text-[#2a2a2a] px-1">
+                  {msg.role === "agent" ? agentConfig.agentName : "Candidate"}
                 </p>
               </div>
             </div>
           ))}
 
-          {/* Streaming state */}
+          {/* Live ReAct trace while streaming */}
           {isReplying && (
             <div className="flex justify-start animate-fade-in">
-              <div className="max-w-[80%] space-y-2">
-                {streamingThinking && (
+              <div className="max-w-[78%] space-y-2">
+                {liveTrace.length > 0 ? (
                   <div>
-                    <div className="flex items-center gap-2 text-xs font-mono text-[#4b5563] mb-1">
-                      <span className="text-[#3b82f6] animate-pulse">►</span>
-                      Agent thinking...
+                    <div className="flex items-center gap-2 text-xs font-mono text-[#2a2a2a] mb-2">
+                      <span className="text-[#3b82f6]/40 animate-pulse">►</span>
+                      <span>Agent reasoning...</span>
                     </div>
-                    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 mb-2">
-                      <pre className="text-xs font-mono text-[#4b5563] leading-relaxed whitespace-pre-wrap">
-                        {streamingThinking}
-                        <span className="animate-pulse">▋</span>
-                      </pre>
+                    <LiveTraceBlock steps={liveTrace} />
+                  </div>
+                ) : (
+                  <div className="bg-[#111111] border border-[#1e1e1e] rounded-2xl rounded-tl-sm px-4 py-3">
+                    <div className="flex gap-1 items-center h-4">
+                      {[0, 150, 300].map((delay) => (
+                        <div
+                          key={delay}
+                          className="w-1.5 h-1.5 rounded-full bg-[#2a2a2a] animate-bounce"
+                          style={{ animationDelay: `${delay}ms` }}
+                        />
+                      ))}
                     </div>
                   </div>
                 )}
-                {streamingReply ? (
-                  <div className="bg-[#111111] border border-[#222222] rounded-xl px-4 py-3 text-sm text-[#d1d5db] leading-relaxed">
-                    <p className="whitespace-pre-wrap">
-                      {streamingReply}
-                      <span className="animate-pulse">▋</span>
-                    </p>
-                  </div>
-                ) : !streamingThinking ? (
-                  <div className="bg-[#111111] border border-[#222222] rounded-xl px-4 py-3">
-                    <div className="flex gap-1 items-center h-5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#3b3b3b] animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#3b3b3b] animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#3b3b3b] animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
-                  </div>
-                ) : null}
               </div>
             </div>
           )}
@@ -373,13 +483,13 @@ export default function SandboxPage() {
         </div>
 
         {/* Input */}
-        <div className="px-6 py-4 border-t border-[#1a1a1a] flex-shrink-0">
+        <div className="px-6 py-4 border-t border-[#161616] flex-shrink-0">
           <div className="flex gap-3 items-end">
             <textarea
               ref={inputRef}
               rows={1}
-              placeholder="Simulate candidate reply... (Enter to send)"
-              className="flex-1 bg-[#111111] border border-[#222222] rounded-xl px-4 py-3 text-sm text-[#ededed] placeholder-[#3b3b3b] focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] resize-none transition-all duration-200 min-h-[46px] max-h-32"
+              placeholder="Simulate a candidate reply... (Enter to send, Shift+Enter for new line)"
+              className="flex-1 bg-[#111111] border border-[#1e1e1e] rounded-xl px-4 py-3 text-sm text-[#ededed] placeholder-[#2a2a2a] focus:outline-none focus:border-[#3b82f6]/50 focus:ring-1 focus:ring-[#3b82f6]/20 resize-none transition-all duration-200 min-h-[46px] max-h-32"
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
@@ -392,14 +502,18 @@ export default function SandboxPage() {
             <button
               onClick={handleSend}
               disabled={isReplying || !input.trim()}
-              className="px-4 py-3 bg-[#3b82f6] hover:bg-[#2563eb] disabled:bg-[#1a1a1a] disabled:text-[#3b3b3b] text-white rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap active:scale-[0.98]"
+              className="px-4 py-3 bg-[#3b82f6] hover:bg-[#2563eb] disabled:bg-[#141414] disabled:text-[#2a2a2a] disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.97] whitespace-nowrap"
             >
-              {isReplying ? "..." : "Send"}
+              {isReplying ? (
+                <span className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full border border-[#3b3b3b] border-t-[#6b7280] animate-spin" />
+                  Thinking
+                </span>
+              ) : (
+                "Send"
+              )}
             </button>
           </div>
-          <p className="text-xs text-[#2a2a2a] mt-2 text-center">
-            Shift+Enter for new line
-          </p>
         </div>
       </div>
     </div>
