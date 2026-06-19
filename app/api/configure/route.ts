@@ -7,25 +7,25 @@ export const AGENT_CAPABILITIES = [
   {
     name: "analyze_candidate_signal",
     label: "Signal Analysis",
-    description: "Interprets what each candidate message reveals — sentiment, intent, engagement score, and optimal response strategy.",
+    description: "Reads every candidate message for specific evidence — sentiment, exact phrases, engagement score. Nothing is assumed.",
     color: "violet",
   },
   {
     name: "search_candidate_profile",
     label: "Profile Synthesis",
-    description: "Builds a behavioral profile for this candidate archetype: motivators, objections, what messaging will land vs. fall flat.",
+    description: "Builds a behavioral profile from role + seniority: motivators, likely objections, what messaging resonates.",
     color: "blue",
   },
   {
     name: "get_role_market_insights",
     label: "Market Intelligence",
-    description: "Fetches live market data: compensation benchmarks, demand/supply dynamics, and what candidates at this level are optimizing for.",
+    description: "Fetches compensation benchmarks, demand dynamics, and what candidates at this level are optimizing for.",
     color: "emerald",
   },
   {
     name: "get_company_talking_points",
     label: "Talking Points",
-    description: "Generates specific, non-generic talking points from real company context — mission, technical challenge, culture, growth trajectory.",
+    description: "Generates specific angles tied to actual company context — not generic recruiting copy.",
     color: "amber",
   },
 ];
@@ -34,47 +34,48 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { companyName, whatTheyDo, culture, candidateProfile, tone } = body;
 
-  const systemPrompt = `You are an AI recruiting agent initializing yourself from company context. Your job is to read the company, form an identity, and generate a 3-message outreach sequence.
+  const systemPrompt = `You are an AI recruiting agent initializing yourself. Read the company context and configure your own identity.
 
-Return a JSON object with this exact structure (no markdown, no code fences):
+Return a single valid JSON object — no markdown, no code fences:
 {
-  "agentName": "A short, single first name that fits the company's vibe. Avoid generic names like 'Alex'. Think about what name a recruiter at THIS company would have.",
+  "agentName": "A short first name that fits this company's personality. Avoid generic names (Alex, Sam). Think about what name a recruiter at THIS specific company would have.",
   "personality": {
-    "traits": ["3–5 specific single-word or short-phrase traits that reflect this company's personality"],
-    "style": "One sentence describing communication style — specific to tone + culture",
-    "avoid": ["2–3 very specific things to avoid in messaging, based on the company culture"]
+    "traits": ["3–5 specific single-word or short-phrase traits derived from the culture and tone"],
+    "style": "One sentence: how you communicate — specific to tone + culture",
+    "avoid": ["2–3 very specific things to avoid, tied to what the company values"]
   },
-  "reasoning": "150–250 words. Explain specifically: why THIS name, why THESE traits, and what in the company context drove each choice. Be concrete — reference actual words from the company description.",
+  "reasoning": {
+    "name": "1–2 sentences: why THIS name, citing something specific in the company context",
+    "personality": "2–3 sentences: why THESE traits. Each trait should map to something explicit in the culture or mission description",
+    "tone": "1–2 sentences: why this tone fits THIS company — not generic reasoning",
+    "avoidance": "1–2 sentences: why these things are avoided — tied to what the company culture suggests",
+    "strategy": "2–3 sentences: why the outreach is structured the way it is — what about this candidate profile drove the approach"
+  },
   "messages": [
     {
       "label": "Initial Outreach",
-      "content": "Personalized hook based on candidate profile + company mission. No generic openers. Name the company, reference something specific about the work. Make them curious."
+      "content": "Personalized first message. Name the company, reference the specific work, make them curious. No generic openers."
     },
     {
       "label": "Follow-up",
-      "content": "Adds genuinely NEW value — a specific insight about the role, a timing angle, something concrete about the problem. Does NOT just nudge or check in."
+      "content": "Adds new value — a specific insight, a timing angle, something concrete. Does NOT just nudge."
     },
     {
       "label": "Final Touch",
-      "content": "Soft close. Creates mild urgency without pressure. Brief. Leaves the door open."
+      "content": "Soft close. Brief. Creates mild urgency without pressure."
     }
   ]
 }
 
-HARD RULES:
-- Tone is ${tone}. Bold = direct, punchy, no corporate speak. Professional = crisp and warm. Conversational = human and loose.
-- Messages must feel structurally different from each other — different hook, different value prop, different ask
-- BANNED phrases: "exciting opportunity", "I came across your profile", "hope this finds you well", "I'd love to connect"
-- Every message must feel written for THIS specific company and THIS specific candidate profile
-- Return ONLY valid JSON`;
+TONE = ${tone}. Bold = punchy, direct, no hedging. Professional = crisp and warm. Conversational = human and loose.
+BANNED phrases: "exciting opportunity", "I came across your profile", "hope this finds you well", "I'd love to connect"
+Every message must reflect THIS company and THIS candidate profile — not generic recruiting copy.`;
 
   const userMessage = `Company: ${companyName}
 What they do: ${whatTheyDo}
 Culture: ${culture}
-Candidate: ${candidateProfile.jobTitle}, ${candidateProfile.seniorityLevel} level, skills: ${candidateProfile.keySkills}
-Tone: ${tone}
-
-Configure yourself as their recruiting agent. Generate the outreach sequence.`;
+Candidate: ${candidateProfile.jobTitle}, ${candidateProfile.seniorityLevel}, skills: ${candidateProfile.keySkills}
+Tone: ${tone}`;
 
   try {
     const response = await client.messages.create({

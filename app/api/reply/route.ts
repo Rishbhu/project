@@ -28,7 +28,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "analyze_candidate_signal",
     description:
-      "Analyze the candidate's latest message. Call this first to log your structured interpretation before deciding how to respond. This is your reasoning step.",
+      "Analyze the candidate's latest message. ALWAYS call this first. Capture direct quotes from the message — signals[] must be verbatim excerpts, not paraphrases.",
     input_schema: {
       type: "object",
       properties: {
@@ -42,17 +42,18 @@ const TOOLS: Anthropic.Tool[] = [
             "passive",
             "not_interested",
           ],
-          description: "The candidate's current interest/engagement level",
+          description: "Candidate's engagement level — must be grounded in specific quoted phrases",
         },
         signals: {
           type: "array",
           items: { type: "string" },
           description:
-            "Specific phrases or cues indicating intent, concern, or interest",
+            "DIRECT QUOTES from the candidate's message in quotation marks (e.g. \"I'm not really looking right now\"). Must be verbatim excerpts. Never paraphrase.",
         },
         primary_concern: {
           type: "string",
-          description: "Main concern or anchor point (optional)",
+          description:
+            "The main concern or hesitation, stated in the candidate's own words if possible. Write 'none stated' if the message doesn't express one.",
         },
         recommended_approach: {
           type: "string",
@@ -352,6 +353,14 @@ MANDATORY PROCESS:
 4. Optionally call get_company_talking_points for specific angles to use
 5. Write your final reply as plain conversational text — NOT a tool call
 
+EVIDENCE REQUIREMENT — NON-NEGOTIABLE:
+- signals[] in analyze_candidate_signal MUST contain direct verbatim quotes from the candidate's message (e.g. "I'm not really looking" not "candidate expressed disinterest")
+- Never claim the candidate "seems interested" or "appears worried" without a quoted phrase from their message that proves it
+- If the candidate's message is short or ambiguous, capture that in primary_concern ("short reply — intent unclear") rather than guessing
+- Do NOT address concerns that the candidate has not explicitly stated
+- Do NOT infer positive interest without a phrase that supports it
+- Every behavioral conclusion in your reply must trace back to something the candidate actually wrote
+
 CONSTRAINTS:
 - Maximum 3 tool calls total before the final reply
 - Never mention tools, reasoning, or analysis to the candidate
@@ -387,7 +396,6 @@ CONSTRAINTS:
             messages: loopMessages,
           });
 
-          // Emit any text as thought
           for (const block of response.content) {
             if (block.type === "text" && block.text.trim()) {
               emit({ type: "thought", content: block.text.trim() });
@@ -398,7 +406,6 @@ CONSTRAINTS:
             (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use"
           );
 
-          // No tool uses = done
           if (toolUses.length === 0 || response.stop_reason === "end_turn") {
             const finalText = response.content
               .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")

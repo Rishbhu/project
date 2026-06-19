@@ -17,7 +17,13 @@ interface AgentConfig {
     style: string;
     avoid: string[];
   };
-  reasoning: string;
+  reasoning: {
+    name: string;
+    personality: string;
+    tone: string;
+    avoidance: string;
+    strategy: string;
+  };
   messages: Array<{ label: string; content: string }>;
   capabilities?: Capability[];
 }
@@ -33,6 +39,14 @@ interface CompanyContext {
   };
   tone: string;
 }
+
+const REASONING_SECTIONS: { key: keyof AgentConfig["reasoning"]; label: string; color: string }[] = [
+  { key: "name", label: "Agent name", color: "text-[#6366f1]" },
+  { key: "personality", label: "Personality", color: "text-violet-400" },
+  { key: "tone", label: "Tone", color: "text-blue-400" },
+  { key: "avoidance", label: "Avoidance", color: "text-red-400/70" },
+  { key: "strategy", label: "Strategy", color: "text-emerald-400" },
+];
 
 const capabilityColors: Record<string, { dot: string; border: string; bg: string; text: string; leftBorder: string }> = {
   violet: {
@@ -69,7 +83,7 @@ const DEFAULT_CAPABILITIES: Capability[] = [
   {
     name: "analyze_candidate_signal",
     label: "Signal Analysis",
-    description: "Interprets what each reply reveals — sentiment, intent, engagement score, and optimal response strategy.",
+    description: "Quotes exact phrases from each candidate message to determine sentiment. Nothing inferred without evidence.",
     color: "violet",
   },
   {
@@ -180,15 +194,9 @@ export default function AgentPage() {
                     <span className={`text-xs flex-1 ${isDone ? "text-[#444444]" : isCurrent ? "text-[#e0e0e0]" : "text-[#2a2a2a]"}`}>
                       {step}
                     </span>
-                    {isDone && (
-                      <span className="text-xs text-emerald-500 flex-shrink-0">✓</span>
-                    )}
-                    {isCurrent && (
-                      <span className="cursor-blink flex-shrink-0" />
-                    )}
-                    {isPending && (
-                      <span className="text-xs text-[#1c1c1c] flex-shrink-0">·</span>
-                    )}
+                    {isDone && <span className="text-xs text-emerald-500 flex-shrink-0">✓</span>}
+                    {isCurrent && <span className="cursor-blink flex-shrink-0" />}
+                    {isPending && <span className="text-xs text-[#1c1c1c] flex-shrink-0">·</span>}
                   </div>
                 );
               })}
@@ -242,7 +250,6 @@ export default function AgentPage() {
         {/* Agent Identity Card */}
         <div className="bg-[#0d0d0d] border border-[#1c1c1c] rounded-2xl p-6">
           <div className="flex items-start gap-5 mb-6">
-            {/* Avatar */}
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl font-bold text-white"
               style={{
@@ -252,7 +259,6 @@ export default function AgentPage() {
             >
               {agentConfig.agentName[0]}
             </div>
-            {/* Name + status */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -262,7 +268,6 @@ export default function AgentPage() {
               <p className="text-xs text-[#555555] mt-0.5">
                 Autonomous Recruiting Agent · {companyContext?.companyName}
               </p>
-              {/* Trait pills */}
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {agentConfig.personality.traits.map((t, i) => (
                   <span
@@ -274,7 +279,6 @@ export default function AgentPage() {
                 ))}
               </div>
             </div>
-            {/* Tone badge */}
             <span className="text-xs font-mono text-[#3b82f6] bg-[#3b82f6]/10 px-3 py-1.5 rounded-full border border-[#3b82f6]/20 flex-shrink-0">
               {companyContext?.tone}
             </span>
@@ -282,11 +286,11 @@ export default function AgentPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-[#141414]">
             <div>
-              <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-2">Style</p>
+              <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-2">Communication style</p>
               <p className="text-sm text-[#888888] leading-relaxed">{agentConfig.personality.style}</p>
             </div>
             <div>
-              <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-2">Avoid list</p>
+              <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-2">Avoid</p>
               <div className="space-y-1.5">
                 {agentConfig.personality.avoid.map((a, i) => (
                   <div key={i} className="flex items-start gap-2">
@@ -299,16 +303,13 @@ export default function AgentPage() {
           </div>
         </div>
 
-        {/* How I decided this — always visible */}
+        {/* Structured Reasoning */}
         <div>
           <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-3">
             How I decided this
           </p>
-          <div
-            className="rounded-xl border border-[#1c1c1c] p-5 overflow-x-auto"
-            style={{ background: "#0a0a0a" }}
-          >
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#141414]">
+          <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-[#141414]">
               <div className="flex gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
                 <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
@@ -316,13 +317,22 @@ export default function AgentPage() {
               </div>
               <span className="text-xs font-mono text-[#333333] ml-1">agent.reasoning</span>
             </div>
-            <pre className="text-xs font-mono text-[#555555] leading-relaxed whitespace-pre-wrap">
-              {agentConfig.reasoning}
-            </pre>
+            <div className="divide-y divide-[#111111]">
+              {REASONING_SECTIONS.map(({ key, label, color }) => (
+                <div key={key} className="flex gap-5 px-5 py-4">
+                  <span className={`text-[10px] font-mono uppercase tracking-widest w-24 flex-shrink-0 pt-0.5 ${color}`}>
+                    {label}
+                  </span>
+                  <p className="text-xs text-[#666666] leading-relaxed flex-1">
+                    {agentConfig.reasoning?.[key] ?? "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Capabilities — 2×2 grid */}
+        {/* Capabilities */}
         <div>
           <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-3">
             Capabilities — tools available at runtime
@@ -350,7 +360,7 @@ export default function AgentPage() {
         {/* Outreach Sequence */}
         <div>
           <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-4">
-            Outreach Sequence — Generated for {companyContext?.candidateProfile.jobTitle}
+            Outreach sequence — generated for {companyContext?.candidateProfile.jobTitle}
           </p>
           <div className="space-y-4">
             {agentConfig.messages.map((msg, i) => (
@@ -362,9 +372,7 @@ export default function AgentPage() {
                   <span className="text-[10px] font-mono text-[#444444] uppercase tracking-widest">{msg.label}</span>
                   <div className="flex-1 h-px bg-[#141414]" />
                 </div>
-                <div
-                  className="bg-[#0d0d0d] border border-[#1c1c1c] border-l-2 border-l-[#3b82f6]/30 rounded-lg px-5 py-4 hover:border-[#2a2a2a] transition-colors"
-                >
+                <div className="bg-[#0d0d0d] border border-[#1c1c1c] border-l-2 border-l-[#3b82f6]/30 rounded-lg px-5 py-4 hover:border-[#2a2a2a] transition-colors">
                   <p className="text-sm text-[#c0c0c0] leading-relaxed whitespace-pre-wrap">
                     {msg.content}
                   </p>
