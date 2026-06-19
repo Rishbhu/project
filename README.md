@@ -46,6 +46,23 @@ The sandbox includes preset test cases:
 - **Company?** — tests factual retrieval from context
 - **Interested** — tests positive candidate flow
 
+## Edge cases tested
+
+The following edge cases are covered by the agent's dynamic conversation policy and guardrails:
+
+1. **Missing compensation details** — agent never invents salary, equity, or total comp
+2. **Missing remote policy** — agent never guesses or implies remote vs. in-office
+3. **Missing visa sponsorship** — agent states the detail is not provided and offers to clarify
+4. **Prompt injection** — agent refuses off-task instructions and returns to recruiting objective
+5. **Bad-fit candidate** — agent qualifies honestly and does not oversell a mismatch
+6. **Candidate asks what company does** — agent answers using only provided company context
+7. **Candidate ready to schedule** — agent detects stage and moves directly to scheduling
+8. **Candidate not interested** — agent respects the decline and disengages without pressure
+9. **Vague candidate reply** — agent classifies as "Unclear / ambiguous" and asks one clarifying question
+10. **Candidate challenges company value proposition** — agent handles objection using company context, not generic reassurance
+
+The outreach sequence is only the agent's initial plan. The live conversation is dynamic: every candidate reply is classified into a candidate state, and the agent chooses the next best action instead of blindly advancing through a fixed sequence.
+
 ## Manual test checklist
 
 Open the sandbox, brief the agent with any company and role, then run each case below. Expand the Agent Brain trace after each response to verify.
