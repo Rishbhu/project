@@ -34,30 +34,34 @@ interface CompanyContext {
   tone: string;
 }
 
-const capabilityColors: Record<string, { dot: string; border: string; bg: string; text: string }> = {
+const capabilityColors: Record<string, { dot: string; border: string; bg: string; text: string; leftBorder: string }> = {
   violet: {
     dot: "bg-violet-400",
     border: "border-violet-500/20",
     bg: "bg-violet-500/5",
     text: "text-violet-400",
+    leftBorder: "border-l-violet-500/50",
   },
   blue: {
     dot: "bg-blue-400",
     border: "border-blue-500/20",
     bg: "bg-blue-500/5",
     text: "text-blue-400",
+    leftBorder: "border-l-blue-500/50",
   },
   emerald: {
     dot: "bg-emerald-400",
     border: "border-emerald-500/20",
     bg: "bg-emerald-500/5",
     text: "text-emerald-400",
+    leftBorder: "border-l-emerald-500/50",
   },
   amber: {
     dot: "bg-amber-400",
     border: "border-amber-500/20",
     bg: "bg-amber-500/5",
     text: "text-amber-400",
+    leftBorder: "border-l-amber-500/50",
   },
 };
 
@@ -88,14 +92,20 @@ const DEFAULT_CAPABILITIES: Capability[] = [
   },
 ];
 
+const LOADING_STEPS = [
+  "Reading company context...",
+  "Forming identity...",
+  "Building outreach sequence...",
+];
+
 export default function AgentPage() {
   const router = useRouter();
   const [companyContext, setCompanyContext] = useState<CompanyContext | null>(null);
   const [agentConfig, setAgentConfig] = useState<AgentConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reasoningOpen, setReasoningOpen] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
 
   useEffect(() => {
     const stored = localStorage.getItem("companyContext");
@@ -106,16 +116,14 @@ export default function AgentPage() {
     const ctx: CompanyContext = JSON.parse(stored);
     setCompanyContext(ctx);
 
-    const steps = [
-      "Reading company context...",
-      "Forming identity...",
-      "Generating outreach sequence...",
-    ];
-    let i = 0;
+    let stepIndex = 0;
     const interval = setInterval(() => {
-      i = (i + 1) % steps.length;
-      setLoadingStep(i);
-    }, 1800);
+      setCompletedSteps((prev) => [...prev, stepIndex]);
+      stepIndex = stepIndex + 1;
+      if (stepIndex < LOADING_STEPS.length) {
+        setLoadingStep(stepIndex);
+      }
+    }, 1600);
 
     fetch("/api/configure", {
       method: "POST",
@@ -139,26 +147,52 @@ export default function AgentPage() {
   }, [router]);
 
   if (loading) {
-    const steps = [
-      "Reading company context...",
-      "Forming identity...",
-      "Generating outreach sequence...",
-    ];
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-8">
-          <div className="relative mx-auto w-20 h-20">
-            <div className="absolute inset-0 rounded-full border border-[#222222]" />
-            <div className="absolute inset-0 rounded-full border-t-2 border-[#3b82f6] animate-spin" />
-            <div className="absolute inset-0 rounded-full border-b border-[#3b82f6]/20 animate-spin" style={{ animationDuration: "3s", animationDirection: "reverse" }} />
+      <main className="min-h-screen flex items-center justify-center px-4">
+        <div className="w-full max-w-sm">
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 bg-[#0d0d0d] border border-[#1c1c1c] rounded-full px-3 py-1.5 mb-6">
+              <span className="text-[#3b82f6] text-xs">●</span>
+              <span className="text-xs font-mono text-[#555555] tracking-widest uppercase">Agent initializing</span>
+            </div>
+            <p className="text-xs font-mono text-[#333333]">Autonomous configuration in progress</p>
           </div>
-          <div className="space-y-2">
-            <p className="text-sm font-mono text-[#3b82f6] transition-all">
-              {steps[loadingStep]}
-            </p>
-            <p className="text-xs text-[#3b3b3b]">
-              Agent configuring itself autonomously
-            </p>
+
+          <div className="bg-[#0a0a0a] border border-[#1c1c1c] rounded-xl p-5 font-mono">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#141414]">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+              </div>
+              <span className="text-xs text-[#333333] ml-1">agent.init</span>
+            </div>
+            <div className="space-y-3">
+              {LOADING_STEPS.map((step, i) => {
+                const isDone = completedSteps.includes(i);
+                const isCurrent = loadingStep === i && !isDone;
+                const isPending = !isDone && !isCurrent;
+                return (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-sm text-[#3b82f6]/60 w-4 flex-shrink-0">
+                      {isDone ? "" : isCurrent ? ">" : " "}
+                    </span>
+                    <span className={`text-xs flex-1 ${isDone ? "text-[#444444]" : isCurrent ? "text-[#e0e0e0]" : "text-[#2a2a2a]"}`}>
+                      {step}
+                    </span>
+                    {isDone && (
+                      <span className="text-xs text-emerald-500 flex-shrink-0">✓</span>
+                    )}
+                    {isCurrent && (
+                      <span className="cursor-blink flex-shrink-0" />
+                    )}
+                    {isPending && (
+                      <span className="text-xs text-[#1c1c1c] flex-shrink-0">·</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </main>
@@ -169,10 +203,13 @@ export default function AgentPage() {
     return (
       <main className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center space-y-4">
-          <p className="text-red-400 font-mono text-sm">{error}</p>
+          <div className="bg-[#0d0d0d] border border-red-500/20 rounded-xl px-6 py-4">
+            <p className="text-red-400 font-mono text-sm mb-1">error</p>
+            <p className="text-xs text-[#555555] font-mono">{error}</p>
+          </div>
           <button
             onClick={() => router.push("/")}
-            className="text-xs text-[#4b5563] hover:text-[#9ca3af] underline"
+            className="text-xs font-mono text-[#444444] hover:text-[#888888] transition-colors"
           >
             ← Back to setup
           </button>
@@ -186,69 +223,75 @@ export default function AgentPage() {
   const capabilities = agentConfig.capabilities || DEFAULT_CAPABILITIES;
 
   return (
-    <main className="min-h-screen px-4 py-12">
+    <main className="min-h-screen px-4 py-10">
       <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
-        {/* Nav */}
-        <div className="flex items-center justify-between mb-2">
+
+        {/* Top nav */}
+        <div className="flex items-center justify-between">
           <button
             onClick={() => router.push("/")}
-            className="text-xs text-[#3b3b3b] hover:text-[#6b7280] transition-colors"
+            className="text-xs font-mono text-[#444444] hover:text-[#888888] transition-colors"
           >
             ← Reconfigure
           </button>
-          <span className="text-xs font-mono text-[#3b82f6]/60 uppercase tracking-widest">
+          <span className="text-xs font-mono text-[#333333] uppercase tracking-widest">
             {companyContext?.companyName}
           </span>
         </div>
 
         {/* Agent Identity Card */}
-        <div className="bg-[#111111] border border-[#1e1e1e] rounded-2xl p-6 space-y-5">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#3b82f6]/10 border border-[#3b82f6]/20 flex items-center justify-center">
-                <span className="text-lg font-bold text-[#3b82f6]">
-                  {agentConfig.agentName[0]}
-                </span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs text-emerald-400 font-mono uppercase tracking-wider">Active</span>
-                </div>
-                <h2 className="text-xl font-bold text-white">{agentConfig.agentName}</h2>
-                <p className="text-xs text-[#4b5563]">Recruiting Agent · {companyContext?.companyName}</p>
-              </div>
+        <div className="bg-[#0d0d0d] border border-[#1c1c1c] rounded-2xl p-6">
+          <div className="flex items-start gap-5 mb-6">
+            {/* Avatar */}
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 text-2xl font-bold text-white"
+              style={{
+                background: "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)",
+                boxShadow: "0 0 24px rgba(59,130,246,0.25)",
+              }}
+            >
+              {agentConfig.agentName[0]}
             </div>
-            <span className="text-xs font-medium text-[#3b82f6] bg-[#3b82f6]/10 px-3 py-1.5 rounded-full border border-[#3b82f6]/20">
-              {companyContext?.tone}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-            <div>
-              <p className="text-xs text-[#3b3b3b] uppercase tracking-wider mb-2">Traits</p>
-              <div className="flex flex-wrap gap-1.5">
+            {/* Name + status */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs font-mono text-emerald-500/70 uppercase tracking-wider">Active</span>
+              </div>
+              <h2 className="text-2xl font-bold text-white leading-tight">{agentConfig.agentName}</h2>
+              <p className="text-xs text-[#555555] mt-0.5">
+                Autonomous Recruiting Agent · {companyContext?.companyName}
+              </p>
+              {/* Trait pills */}
+              <div className="flex flex-wrap gap-1.5 mt-3">
                 {agentConfig.personality.traits.map((t, i) => (
                   <span
                     key={i}
-                    className="text-xs px-2.5 py-1 bg-[#171717] border border-[#242424] rounded-full text-[#9ca3af]"
+                    className="text-xs px-2.5 py-1 bg-[#141414] border border-[#1e1e1e] rounded-full text-[#888888] font-mono"
                   >
                     {t}
                   </span>
                 ))}
               </div>
             </div>
+            {/* Tone badge */}
+            <span className="text-xs font-mono text-[#3b82f6] bg-[#3b82f6]/10 px-3 py-1.5 rounded-full border border-[#3b82f6]/20 flex-shrink-0">
+              {companyContext?.tone}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-[#141414]">
             <div>
-              <p className="text-xs text-[#3b3b3b] uppercase tracking-wider mb-2">Style</p>
-              <p className="text-xs text-[#6b7280] leading-relaxed">{agentConfig.personality.style}</p>
+              <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-2">Style</p>
+              <p className="text-sm text-[#888888] leading-relaxed">{agentConfig.personality.style}</p>
             </div>
             <div>
-              <p className="text-xs text-[#3b3b3b] uppercase tracking-wider mb-2">Avoids</p>
-              <div className="space-y-1">
+              <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-2">Avoid list</p>
+              <div className="space-y-1.5">
                 {agentConfig.personality.avoid.map((a, i) => (
-                  <div key={i} className="flex items-center gap-1.5">
-                    <span className="text-red-500/40 text-xs">×</span>
-                    <span className="text-xs text-red-400/50">{a}</span>
+                  <div key={i} className="flex items-start gap-2">
+                    <span className="text-red-500/50 text-xs mt-0.5 flex-shrink-0">—</span>
+                    <span className="text-xs text-red-400/50 leading-relaxed">{a}</span>
                   </div>
                 ))}
               </div>
@@ -256,78 +299,73 @@ export default function AgentPage() {
           </div>
         </div>
 
-        {/* Capabilities */}
+        {/* How I decided this — always visible */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <h3 className="text-xs text-[#3b3b3b] uppercase tracking-wider">Agent capabilities</h3>
-            <span className="text-xs font-mono text-[#2a2a2a]">— tools available at runtime</span>
+          <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-3">
+            How I decided this
+          </p>
+          <div
+            className="rounded-xl border border-[#1c1c1c] p-5 overflow-x-auto"
+            style={{ background: "#0a0a0a" }}
+          >
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[#141414]">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+              </div>
+              <span className="text-xs font-mono text-[#333333] ml-1">agent.reasoning</span>
+            </div>
+            <pre className="text-xs font-mono text-[#555555] leading-relaxed whitespace-pre-wrap">
+              {agentConfig.reasoning}
+            </pre>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        </div>
+
+        {/* Capabilities — 2×2 grid */}
+        <div>
+          <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-3">
+            Capabilities — tools available at runtime
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {capabilities.map((cap) => {
               const colors = capabilityColors[cap.color] || capabilityColors.blue;
               return (
                 <div
                   key={cap.name}
-                  className={`${colors.bg} border ${colors.border} rounded-xl p-4`}
+                  className={`${colors.bg} border ${colors.border} border-l-2 ${colors.leftBorder} rounded-lg p-3.5`}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
-                    <span className={`text-xs font-medium ${colors.text}`}>{cap.label}</span>
+                    <div className={`w-1.5 h-1.5 rounded-full ${colors.dot} flex-shrink-0`} />
+                    <span className={`text-xs font-semibold ${colors.text}`}>{cap.label}</span>
                   </div>
-                  <p className="text-xs text-[#4b5563] leading-relaxed">{cap.description}</p>
-                  <p className="text-xs font-mono text-[#2a2a2a] mt-2">{cap.name}()</p>
+                  <p className="text-xs text-[#555555] leading-relaxed mb-1.5">{cap.description}</p>
+                  <p className="text-[10px] font-mono text-[#2a2a2a]">{cap.name}()</p>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Reasoning Block */}
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
-          <button
-            onClick={() => setReasoningOpen(!reasoningOpen)}
-            className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#111111] transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-mono text-[#3b82f6]/60">
-                {reasoningOpen ? "▼" : "►"}
-              </span>
-              <span className="text-xs font-mono text-[#4b5563]">
-                How I configured myself
-              </span>
-            </div>
-            <span className="text-xs font-mono text-[#2a2a2a]">
-              {reasoningOpen ? "collapse" : "expand"}
-            </span>
-          </button>
-          {reasoningOpen && (
-            <div className="px-5 pb-5 border-t border-[#161616]">
-              <pre className="mt-4 text-xs font-mono text-[#4b5563] leading-relaxed whitespace-pre-wrap">
-                {agentConfig.reasoning}
-              </pre>
-            </div>
-          )}
-        </div>
-
-        {/* Message Sequence */}
+        {/* Outreach Sequence */}
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <h3 className="text-xs text-[#3b3b3b] uppercase tracking-wider">Outreach sequence</h3>
-            <span className="text-xs font-mono text-[#2a2a2a]">
-              — {companyContext?.candidateProfile.jobTitle}
-            </span>
-          </div>
-
-          <div className="space-y-3">
+          <p className="text-[10px] font-mono text-[#444444] uppercase tracking-widest mb-4">
+            Outreach Sequence — Generated for {companyContext?.candidateProfile.jobTitle}
+          </p>
+          <div className="space-y-4">
             {agentConfig.messages.map((msg, i) => (
-              <div key={i} className="animate-fade-in" style={{ animationDelay: `${i * 0.12}s` }}>
+              <div key={i} className="animate-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="text-xs font-mono text-[#3b82f6]/50 w-5">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="text-xs text-[#3b3b3b] uppercase tracking-wider">{msg.label}</span>
-                  <div className="flex-1 h-px bg-[#1a1a1a]" />
+                  <span className="text-xs font-mono text-[#3b82f6] tabular-nums">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="text-[10px] font-mono text-[#444444] uppercase tracking-widest">{msg.label}</span>
+                  <div className="flex-1 h-px bg-[#141414]" />
                 </div>
-                <div className="ml-8 bg-[#111111] border border-[#1e1e1e] rounded-xl px-5 py-4 hover:border-[#272727] transition-colors">
-                  <p className="text-sm text-[#c9d1d9] leading-relaxed whitespace-pre-wrap">
+                <div
+                  className="bg-[#0d0d0d] border border-[#1c1c1c] border-l-2 border-l-[#3b82f6]/30 rounded-lg px-5 py-4 hover:border-[#2a2a2a] transition-colors"
+                >
+                  <p className="text-sm text-[#c0c0c0] leading-relaxed whitespace-pre-wrap">
                     {msg.content}
                   </p>
                 </div>
@@ -337,10 +375,10 @@ export default function AgentPage() {
         </div>
 
         {/* CTA */}
-        <div className="flex justify-end pt-2 pb-8">
+        <div className="flex justify-end pt-2 pb-10">
           <button
             onClick={() => router.push("/sandbox")}
-            className="group px-6 py-3 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-semibold text-sm rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-[#3b82f6]/20 active:scale-[0.98] flex items-center gap-2"
+            className="group px-6 py-3 bg-[#3b82f6] hover:bg-[#2563eb] text-white font-semibold text-sm rounded-xl transition-all duration-150 hover:shadow-lg hover:shadow-[#3b82f6]/20 active:scale-[0.98] flex items-center gap-2"
           >
             Test this agent
             <span className="group-hover:translate-x-0.5 transition-transform">→</span>

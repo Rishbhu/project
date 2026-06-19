@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 
 type Tone = "Professional" | "Conversational" | "Bold";
 
+const TONE_META: Record<Tone, string> = {
+  Professional: "Measured. Precise. Warm.",
+  Conversational: "Human. Loose. Direct.",
+  Bold: "Punchy. Confident. No fluff.",
+};
+
 export default function SetupPage() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -60,157 +66,158 @@ export default function SetupPage() {
   }
 
   const inputBase =
-    "w-full bg-[#111111] border border-[#222222] rounded-lg px-4 py-3 text-sm text-[#ededed] placeholder-[#4b5563] focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] transition-all duration-200";
+    "w-full bg-[#0d0d0d] border border-[#1c1c1c] rounded-lg px-4 py-3 text-sm text-[#e0e0e0] placeholder-[#333333] focus:outline-none focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6]/30 transition-all duration-150 font-mono";
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-xl">
-        {/* Header */}
+      <div className="w-full max-w-lg">
+
+        {/* Badge + Hero */}
         <div className="mb-10">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="w-2 h-2 rounded-full bg-[#3b82f6] animate-pulse" />
-            <span className="text-xs font-mono text-[#3b82f6] uppercase tracking-widest">
-              Recruiting Agent
-            </span>
+          <div className="inline-flex items-center gap-2 bg-[#0d0d0d] border border-[#1c1c1c] rounded-full px-3 py-1.5 mb-7">
+            <span className="text-[#3b82f6] text-xs">●</span>
+            <span className="text-xs font-mono text-[#555555] tracking-widest uppercase">Recruiting Agent / v2</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-            Configure your agent
+          <h1 className="text-[2.5rem] font-bold tracking-tight text-white leading-none mb-2">
+            Brief the agent.
           </h1>
-          <p className="text-sm text-[#6b7280]">
-            Give the agent company context. It will figure out the rest.
-          </p>
+          <p className="text-base text-[#555555]">It configures itself.</p>
+          <div className="mt-6 h-px bg-[#1c1c1c]" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Company Name */}
+
+          {/* COMPANY section */}
           <div>
-            <label className="block text-xs font-medium text-[#9ca3af] uppercase tracking-wider mb-2">
-              Company Name
-            </label>
-            <input
-              type="text"
-              placeholder="Acme Corp"
-              className={`${inputBase} ${errors.companyName ? "border-red-500/50" : ""}`}
-              value={form.companyName}
-              onChange={(e) => field("companyName", e.target.value)}
-            />
-            {errors.companyName && (
-              <p className="mt-1 text-xs text-red-400">{errors.companyName}</p>
-            )}
+            <p className="text-[10px] font-mono text-[#555555] uppercase tracking-widest mb-3">Company</p>
+            <div className="border-l-2 border-[#3b82f6]/30 pl-4 space-y-3">
+              <div>
+                <input
+                  type="text"
+                  placeholder="Company name"
+                  className={`${inputBase} ${errors.companyName ? "border-red-500/40" : ""}`}
+                  value={form.companyName}
+                  onChange={(e) => field("companyName", e.target.value)}
+                />
+                {errors.companyName && (
+                  <p className="mt-1 text-xs font-mono text-red-400/80">↳ {errors.companyName}</p>
+                )}
+              </div>
+              <div>
+                <textarea
+                  rows={3}
+                  placeholder="What does the company do? Be specific — the agent reads this."
+                  className={`${inputBase} resize-none leading-relaxed ${errors.whatTheyDo ? "border-red-500/40" : ""}`}
+                  value={form.whatTheyDo}
+                  onChange={(e) => field("whatTheyDo", e.target.value)}
+                />
+                {errors.whatTheyDo && (
+                  <p className="mt-1 text-xs font-mono text-red-400/80">↳ {errors.whatTheyDo}</p>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* What They Do */}
+          {/* CULTURE section */}
           <div>
-            <label className="block text-xs font-medium text-[#9ca3af] uppercase tracking-wider mb-2">
-              What the company does
-            </label>
-            <textarea
-              rows={3}
-              placeholder="We build AI-native developer tools that help engineering teams ship 10x faster. Our core product is a real-time code review agent that integrates into CI/CD pipelines."
-              className={`${inputBase} resize-none leading-relaxed ${errors.whatTheyDo ? "border-red-500/50" : ""}`}
-              value={form.whatTheyDo}
-              onChange={(e) => field("whatTheyDo", e.target.value)}
-            />
-            {errors.whatTheyDo && (
-              <p className="mt-1 text-xs text-red-400">{errors.whatTheyDo}</p>
-            )}
-          </div>
-
-          {/* Culture */}
-          <div>
-            <label className="block text-xs font-medium text-[#9ca3af] uppercase tracking-wider mb-2">
-              Company culture
-            </label>
-            <input
-              type="text"
-              placeholder="Fast-paced, remote-first, low ego, high ownership"
-              className={`${inputBase} ${errors.culture ? "border-red-500/50" : ""}`}
-              value={form.culture}
-              onChange={(e) => field("culture", e.target.value)}
-            />
-            {errors.culture && (
-              <p className="mt-1 text-xs text-red-400">{errors.culture}</p>
-            )}
-          </div>
-
-          {/* Candidate Profile */}
-          <div>
-            <label className="block text-xs font-medium text-[#9ca3af] uppercase tracking-wider mb-2">
-              Candidate profile
-            </label>
-            <div className="space-y-3">
+            <p className="text-[10px] font-mono text-[#555555] uppercase tracking-widest mb-3">Culture</p>
+            <div>
               <input
                 type="text"
-                placeholder="Job title (e.g. Senior Software Engineer)"
-                className={`${inputBase} ${errors.jobTitle ? "border-red-500/50" : ""}`}
-                value={form.jobTitle}
-                onChange={(e) => field("jobTitle", e.target.value)}
+                placeholder="e.g. Fast-paced, remote-first, low ego, high ownership"
+                className={`${inputBase} ${errors.culture ? "border-red-500/40" : ""}`}
+                value={form.culture}
+                onChange={(e) => field("culture", e.target.value)}
               />
-              {errors.jobTitle && (
-                <p className="-mt-2 text-xs text-red-400">{errors.jobTitle}</p>
-              )}
-              <input
-                type="text"
-                placeholder="Seniority level (e.g. Senior, Lead, Principal)"
-                className={`${inputBase} ${errors.seniorityLevel ? "border-red-500/50" : ""}`}
-                value={form.seniorityLevel}
-                onChange={(e) => field("seniorityLevel", e.target.value)}
-              />
-              {errors.seniorityLevel && (
-                <p className="-mt-2 text-xs text-red-400">
-                  {errors.seniorityLevel}
-                </p>
-              )}
-              <input
-                type="text"
-                placeholder="Key skills (e.g. Rust, distributed systems, technical leadership)"
-                className={`${inputBase} ${errors.keySkills ? "border-red-500/50" : ""}`}
-                value={form.keySkills}
-                onChange={(e) => field("keySkills", e.target.value)}
-              />
-              {errors.keySkills && (
-                <p className="-mt-2 text-xs text-red-400">{errors.keySkills}</p>
+              {errors.culture && (
+                <p className="mt-1 text-xs font-mono text-red-400/80">↳ {errors.culture}</p>
               )}
             </div>
           </div>
 
-          {/* Tone */}
+          {/* HIRE FOR section */}
           <div>
-            <label className="block text-xs font-medium text-[#9ca3af] uppercase tracking-wider mb-3">
-              Tone preference
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {(["Professional", "Conversational", "Bold"] as Tone[]).map(
-                (t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      setForm((f) => ({ ...f, tone: t }));
-                      if (errors.tone) setErrors((e) => ({ ...e, tone: "" }));
-                    }}
-                    className={`py-3 rounded-lg border text-sm font-medium transition-all duration-200 ${
-                      form.tone === t
-                        ? "bg-[#3b82f6]/10 border-[#3b82f6] text-[#3b82f6]"
-                        : "bg-[#111111] border-[#222222] text-[#6b7280] hover:border-[#333333] hover:text-[#9ca3af]"
-                    }`}
-                  >
+            <p className="text-[10px] font-mono text-[#555555] uppercase tracking-widest mb-3">Hire For</p>
+            <div className="border border-[#1c1c1c] rounded-xl overflow-hidden">
+              <div className="px-4 py-3 bg-[#0d0d0d]">
+                <input
+                  type="text"
+                  placeholder="Job title — e.g. Senior Software Engineer"
+                  className="w-full bg-transparent text-sm text-[#e0e0e0] placeholder-[#333333] font-mono focus:outline-none"
+                  value={form.jobTitle}
+                  onChange={(e) => field("jobTitle", e.target.value)}
+                />
+                {errors.jobTitle && (
+                  <p className="mt-1 text-xs font-mono text-red-400/80">↳ {errors.jobTitle}</p>
+                )}
+              </div>
+              <div className="h-px bg-[#1c1c1c]" />
+              <div className="px-4 py-3 bg-[#0d0d0d]">
+                <input
+                  type="text"
+                  placeholder="Seniority — e.g. Senior, Lead, Principal"
+                  className="w-full bg-transparent text-sm text-[#e0e0e0] placeholder-[#333333] font-mono focus:outline-none"
+                  value={form.seniorityLevel}
+                  onChange={(e) => field("seniorityLevel", e.target.value)}
+                />
+                {errors.seniorityLevel && (
+                  <p className="mt-1 text-xs font-mono text-red-400/80">↳ {errors.seniorityLevel}</p>
+                )}
+              </div>
+              <div className="h-px bg-[#1c1c1c]" />
+              <div className="px-4 py-3 bg-[#0d0d0d]">
+                <input
+                  type="text"
+                  placeholder="Key skills — e.g. Rust, distributed systems, leadership"
+                  className="w-full bg-transparent text-sm text-[#e0e0e0] placeholder-[#333333] font-mono focus:outline-none"
+                  value={form.keySkills}
+                  onChange={(e) => field("keySkills", e.target.value)}
+                />
+                {errors.keySkills && (
+                  <p className="mt-1 text-xs font-mono text-red-400/80">↳ {errors.keySkills}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* TONE section */}
+          <div>
+            <p className="text-[10px] font-mono text-[#555555] uppercase tracking-widest mb-3">Tone</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(["Professional", "Conversational", "Bold"] as Tone[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setForm((f) => ({ ...f, tone: t }));
+                    if (errors.tone) setErrors((e) => ({ ...e, tone: "" }));
+                  }}
+                  className={`flex flex-col items-start px-4 py-4 rounded-xl border text-left transition-all duration-150 ${
+                    form.tone === t
+                      ? "bg-[#3b82f6]/10 border-[#3b82f6] "
+                      : "bg-[#0d0d0d] border-[#1c1c1c] hover:border-[#2a2a2a]"
+                  }`}
+                >
+                  <span className={`text-sm font-semibold mb-1.5 ${form.tone === t ? "text-[#3b82f6]" : "text-[#888888]"}`}>
                     {t}
-                  </button>
-                )
-              )}
+                  </span>
+                  <span className={`text-xs font-mono leading-relaxed ${form.tone === t ? "text-[#3b82f6]/70" : "text-[#444444]"}`}>
+                    {TONE_META[t]}
+                  </span>
+                </button>
+              ))}
             </div>
             {errors.tone && (
-              <p className="mt-2 text-xs text-red-400">{errors.tone}</p>
+              <p className="mt-2 text-xs font-mono text-red-400/80">↳ {errors.tone}</p>
             )}
           </div>
 
           {/* Submit */}
           <button
             type="submit"
-            className="w-full mt-2 py-3.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-white font-semibold text-sm transition-all duration-200 hover:shadow-lg hover:shadow-[#3b82f6]/20 active:scale-[0.99]"
+            className="w-full mt-2 py-4 rounded-xl bg-[#3b82f6] hover:bg-[#2563eb] text-white font-semibold text-sm transition-all duration-150 hover:shadow-lg hover:shadow-[#3b82f6]/20 active:scale-[0.99] tracking-wide"
           >
-            Configure Agent →
+            Brief the agent →
           </button>
         </form>
       </div>
