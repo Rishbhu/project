@@ -5,21 +5,59 @@ import { useRouter } from "next/navigation";
 
 type Tone = "Professional" | "Conversational" | "Bold";
 
-const TONE_META: Record<Tone, { descriptor: string; sub: string }> = {
-  Professional: { descriptor: "Measured", sub: "Precise. Warm. No noise." },
-  Conversational: { descriptor: "Human", sub: "Loose. Direct. Real." },
-  Bold: { descriptor: "Punchy", sub: "Confident. No fluff." },
-};
+const TONES: { value: Tone; label: string; descriptor: string }[] = [
+  { value: "Professional", label: "Professional", descriptor: "Crisp, warm, precise." },
+  { value: "Conversational", label: "Conversational", descriptor: "Human, loose, real." },
+  { value: "Bold", label: "Bold", descriptor: "Direct, no hedging." },
+];
+
+/* ── shared tokens ── */
+const C = {
+  card: "#0d1020",
+  cardHeader: "#090c1a",
+  border: "#1c2238",
+  borderSoft: "#131828",
+  input: "#0a0c18",
+  textSecondary: "#6b7a9c",
+  textMuted: "#2e3650",
+  indigo: "#6366f1",
+  indigoLight: "#818cf8",
+} as const;
+
+function Section({ num, label, children }: { num: string; label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+      <div className="flex items-center gap-3 px-5 py-3" style={{ background: C.cardHeader, borderBottom: `1px solid ${C.borderSoft}` }}>
+        <span
+          className="text-[10px] font-mono tabular-nums px-2 py-0.5 rounded-md"
+          style={{ color: C.indigoLight, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.15)" }}
+        >
+          {num}
+        </span>
+        <span className="text-xs font-medium tracking-wide" style={{ color: C.textSecondary }}>{label}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Row({ error, children, divider }: { error?: string; children: React.ReactNode; divider?: boolean }) {
+  return (
+    <>
+      {divider && <div className="h-px mx-5" style={{ background: C.borderSoft }} />}
+      <div className="px-5 py-3.5">
+        {children}
+        {error && <p className="mt-1.5 text-xs" style={{ color: "#f87171aa" }}>{error}</p>}
+      </div>
+    </>
+  );
+}
 
 export default function SetupPage() {
   const router = useRouter();
   const [form, setForm] = useState({
-    companyName: "",
-    whatTheyDo: "",
-    culture: "",
-    jobTitle: "",
-    seniorityLevel: "",
-    keySkills: "",
+    companyName: "", whatTheyDo: "", culture: "",
+    jobTitle: "", seniorityLevel: "", keySkills: "",
     tone: "" as Tone | "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -39,24 +77,13 @@ export default function SetupPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
-
-    const context = {
-      companyName: form.companyName.trim(),
-      whatTheyDo: form.whatTheyDo.trim(),
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    localStorage.setItem("companyContext", JSON.stringify({
+      companyName: form.companyName.trim(), whatTheyDo: form.whatTheyDo.trim(),
       culture: form.culture.trim(),
-      candidateProfile: {
-        jobTitle: form.jobTitle.trim(),
-        seniorityLevel: form.seniorityLevel.trim(),
-        keySkills: form.keySkills.trim(),
-      },
+      candidateProfile: { jobTitle: form.jobTitle.trim(), seniorityLevel: form.seniorityLevel.trim(), keySkills: form.keySkills.trim() },
       tone: form.tone,
-    };
-
-    localStorage.setItem("companyContext", JSON.stringify(context));
+    }));
     router.push("/agent");
   }
 
@@ -65,147 +92,125 @@ export default function SetupPage() {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: "" }));
   }
 
-  const inputBase =
-    "w-full bg-[#0d0d0d] border border-[#1c1c1c] rounded-lg px-4 py-3 text-sm text-[#e0e0e0] placeholder-[#2e2e2e] focus:outline-none focus:border-[#3b82f6]/60 focus:ring-1 focus:ring-[#3b82f6]/20 transition-all duration-150";
-
-  const sectionLabel = "text-[10px] font-mono text-[#555555] uppercase tracking-widest mb-3";
+  const inp = `w-full bg-transparent text-sm text-[#eef0ff] placeholder-[#252e48] focus:outline-none`;
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-16">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-xl">
 
-        {/* Hero */}
-        <div className="mb-10">
-          <div className="inline-flex items-center gap-2 bg-[#0d0d0d] border border-[#1c1c1c] rounded-full px-3 py-1.5 mb-7">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#3b82f6] inline-block" />
-            <span className="text-xs font-mono text-[#555555] tracking-widest uppercase">Recruiting Agent</span>
+        {/* ── Hero ── */}
+        <div className="mb-12">
+          <div
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-8"
+            style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.22)" }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: C.indigoLight }} />
+            <span className="text-[11px] font-mono tracking-widest uppercase" style={{ color: "#818cf8aa" }}>
+              Recruiting Agent
+            </span>
           </div>
-          <h1 className="text-[2.75rem] font-bold tracking-tight text-white leading-none mb-3">
+          <h1
+            className="text-[3.25rem] font-bold tracking-tight leading-[1.05] mb-2"
+            style={{ background: "linear-gradient(140deg,#ffffff 20%,#c7d2fe 65%,#a5b4fc 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
+          >
             Brief the agent.
           </h1>
-          <p className="text-base text-[#555555] leading-relaxed">
-            It reads the context, builds its own identity,<br />
-            and writes the outreach.
+          <p
+            className="text-2xl font-semibold mb-5 leading-snug"
+            style={{ background: "linear-gradient(135deg,#818cf8 0%,#6366f1 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
+          >
+            It does the rest.
           </p>
-          <div className="mt-7 h-px bg-[#1a1a1a]" />
+          <p className="text-[15px] leading-relaxed max-w-md" style={{ color: "#4a5580" }}>
+            Give it your company context, the role, and a tone. It picks a name, builds its personality, and writes the outreach.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-7">
+        <form onSubmit={handleSubmit} className="space-y-2.5">
 
           {/* Company */}
-          <div>
-            <p className={sectionLabel}>Company</p>
-            <div className="border-l-2 border-[#6366f1]/25 pl-4 space-y-3">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Company name"
-                  className={`${inputBase} ${errors.companyName ? "border-red-500/30" : ""}`}
-                  value={form.companyName}
-                  onChange={(e) => field("companyName", e.target.value)}
-                />
-                {errors.companyName && (
-                  <p className="mt-1.5 text-xs text-red-400/70">↳ {errors.companyName}</p>
-                )}
-              </div>
-              <div>
-                <textarea
-                  rows={3}
-                  placeholder="What does the company do? Be specific — the agent reads this literally."
-                  className={`${inputBase} resize-none leading-relaxed ${errors.whatTheyDo ? "border-red-500/30" : ""}`}
-                  value={form.whatTheyDo}
-                  onChange={(e) => field("whatTheyDo", e.target.value)}
-                />
-                {errors.whatTheyDo && (
-                  <p className="mt-1.5 text-xs text-red-400/70">↳ {errors.whatTheyDo}</p>
-                )}
-              </div>
-            </div>
-          </div>
+          <Section num="01" label="Company">
+            <Row error={errors.companyName}>
+              <input type="text" placeholder="Company name" className={inp}
+                value={form.companyName} onChange={(e) => field("companyName", e.target.value)} />
+            </Row>
+            <Row error={errors.whatTheyDo} divider>
+              <textarea rows={3} placeholder="What do they build? The agent reads this literally — be specific about the product and market."
+                className={`${inp} resize-none leading-relaxed`}
+                value={form.whatTheyDo} onChange={(e) => field("whatTheyDo", e.target.value)} />
+            </Row>
+          </Section>
 
           {/* Culture */}
-          <div>
-            <p className={sectionLabel}>Culture</p>
-            <div>
-              <input
-                type="text"
-                placeholder="e.g. Fast-paced, remote-first, low ego, high ownership"
-                className={`${inputBase} ${errors.culture ? "border-red-500/30" : ""}`}
-                value={form.culture}
-                onChange={(e) => field("culture", e.target.value)}
-              />
-              {errors.culture && (
-                <p className="mt-1.5 text-xs text-red-400/70">↳ {errors.culture}</p>
-              )}
-            </div>
-          </div>
+          <Section num="02" label="Culture">
+            <Row error={errors.culture}>
+              <input type="text" placeholder="e.g. Fast-paced, remote-first, low ego, high ownership" className={inp}
+                value={form.culture} onChange={(e) => field("culture", e.target.value)} />
+            </Row>
+          </Section>
 
-          {/* Hire For */}
-          <div>
-            <p className={sectionLabel}>Hire for</p>
-            <div className="border border-[#1c1c1c] rounded-xl overflow-hidden">
-              {[
-                { key: "jobTitle", placeholder: "Job title — e.g. Senior Software Engineer" },
-                { key: "seniorityLevel", placeholder: "Seniority — e.g. Senior, Lead, Principal" },
-                { key: "keySkills", placeholder: "Key skills — e.g. Rust, distributed systems, leadership" },
-              ].map(({ key, placeholder }, i) => (
-                <div key={key}>
-                  {i > 0 && <div className="h-px bg-[#1a1a1a]" />}
-                  <div className="px-4 py-3 bg-[#0d0d0d]">
-                    <input
-                      type="text"
-                      placeholder={placeholder}
-                      className="w-full bg-transparent text-sm text-[#e0e0e0] placeholder-[#2e2e2e] focus:outline-none"
-                      value={form[key as keyof typeof form] as string}
-                      onChange={(e) => field(key, e.target.value)}
-                    />
-                    {errors[key] && (
-                      <p className="mt-1 text-xs text-red-400/70">↳ {errors[key]}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Role */}
+          <Section num="03" label="Hire for">
+            {[
+              { key: "jobTitle",      ph: "Job title — e.g. Senior Software Engineer" },
+              { key: "seniorityLevel", ph: "Seniority — e.g. Senior, Staff, Principal" },
+              { key: "keySkills",     ph: "Key skills — e.g. Rust, distributed systems, team leadership" },
+            ].map(({ key, ph }, i) => (
+              <Row key={key} error={errors[key]} divider={i > 0}>
+                <input type="text" placeholder={ph} className={inp}
+                  value={form[key as keyof typeof form] as string}
+                  onChange={(e) => field(key, e.target.value)} />
+              </Row>
+            ))}
+          </Section>
 
           {/* Tone */}
-          <div>
-            <p className={sectionLabel}>Tone</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(["Professional", "Conversational", "Bold"] as Tone[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => {
-                    setForm((f) => ({ ...f, tone: t }));
-                    if (errors.tone) setErrors((e) => ({ ...e, tone: "" }));
-                  }}
-                  className={`flex flex-col items-start px-4 py-4 rounded-xl border text-left transition-all duration-150 ${
-                    form.tone === t
-                      ? "bg-[#6366f1]/8 border-[#6366f1]/50"
-                      : "bg-[#0d0d0d] border-[#1c1c1c] hover:border-[#2a2a2a]"
-                  }`}
-                >
-                  <span className={`text-sm font-semibold mb-1 ${form.tone === t ? "text-[#818cf8]" : "text-[#888888]"}`}>
-                    {TONE_META[t].descriptor}
-                  </span>
-                  <span className={`text-xs leading-snug ${form.tone === t ? "text-[#818cf8]/60" : "text-[#444444]"}`}>
-                    {TONE_META[t].sub}
-                  </span>
-                </button>
-              ))}
+          <Section num="04" label="Tone">
+            <div className="p-3 grid grid-cols-3 gap-2">
+              {TONES.map((t) => {
+                const sel = form.tone === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => { setForm((f) => ({ ...f, tone: t.value })); if (errors.tone) setErrors((e) => ({ ...e, tone: "" })); }}
+                    className="flex flex-col items-start px-4 py-4 rounded-xl text-left transition-all duration-150"
+                    style={{
+                      background: sel ? "rgba(99,102,241,0.12)" : C.input,
+                      border: `1px solid ${sel ? "rgba(99,102,241,0.5)" : C.border}`,
+                      boxShadow: sel ? "0 0 24px rgba(99,102,241,0.14), inset 0 1px 0 rgba(255,255,255,0.05)" : "none",
+                    }}
+                  >
+                    <span className="text-sm font-semibold mb-1.5" style={{ color: sel ? "#a5b4fc" : "#4a5580" }}>
+                      {t.label}
+                    </span>
+                    <span className="text-[11px] leading-relaxed" style={{ color: sel ? "rgba(129,140,248,0.6)" : "#252e48" }}>
+                      {t.descriptor}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            {errors.tone && (
-              <p className="mt-2 text-xs text-red-400/70">↳ {errors.tone}</p>
-            )}
+            {errors.tone && <p className="px-5 pb-3 text-xs" style={{ color: "#f87171aa" }}>Select a tone</p>}
+          </Section>
+
+          {/* CTA */}
+          <div className="pt-2 space-y-3">
+            <button
+              type="submit"
+              className="w-full py-4 rounded-xl font-semibold text-white text-sm tracking-wide transition-all duration-200 active:scale-[0.99]"
+              style={{
+                background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%)",
+                boxShadow: "0 0 0 1px rgba(99,102,241,0.5), 0 8px 32px rgba(99,102,241,0.28)",
+              }}
+            >
+              Brief the agent →
+            </button>
+            <p className="text-center text-[11px] font-mono" style={{ color: "#252e48" }}>
+              Configures itself autonomously. Takes about 5 seconds.
+            </p>
           </div>
 
-          <button
-            type="submit"
-            className="w-full mt-1 py-4 rounded-xl bg-[#3b82f6] hover:bg-[#2563eb] text-white font-semibold text-sm transition-all duration-150 hover:shadow-lg hover:shadow-[#3b82f6]/20 active:scale-[0.99] tracking-wide"
-          >
-            Brief the agent →
-          </button>
         </form>
       </div>
     </main>

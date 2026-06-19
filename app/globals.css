@@ -3,74 +3,62 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
-  html,
-  body {
+  html, body {
     height: 100%;
     font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
-    color: #e2e2e2;
-    background-color: #0c0c0f;
-    /* Subtle top-light glow + very faint grid */
+    color: #eef0ff;
+    background-color: #07080f;
     background-image:
-      radial-gradient(ellipse 100% 40% at 50% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 100%),
-      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.018) 1px, transparent 0);
-    background-size: auto, 32px 32px;
+      radial-gradient(ellipse 100% 60% at 50% -10%, rgba(99,102,241,0.22) 0%, transparent 60%),
+      radial-gradient(ellipse 55% 40% at 90% 105%, rgba(139,92,246,0.1) 0%, transparent 55%),
+      radial-gradient(ellipse 45% 30% at 5% 80%, rgba(59,130,246,0.06) 0%, transparent 50%),
+      radial-gradient(circle at 1px 1px, rgba(148,163,255,0.028) 1px, transparent 0);
+    background-size: auto, auto, auto, 36px 36px;
+    background-attachment: fixed;
   }
 
-  ::selection {
-    background: rgba(99, 102, 241, 0.25);
-  }
+  ::selection { background: rgba(99,102,241,0.35); color: #fff; }
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #2a2a35; border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #383848; }
+  ::-webkit-scrollbar-thumb { background: #1e2640; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #2d3a5c; }
 }
 
 @layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
-  }
-  .animate-slide-up {
-    animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  .font-ui {
-    font-family: var(--font-inter), system-ui, sans-serif;
-  }
-  .font-code {
-    font-family: var(--font-geist-mono), 'Fira Code', monospace;
-  }
+  .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+  .animate-slide-up { animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1) forwards; }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
-
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(99,102,241,0.4); }
+  50%       { box-shadow: 0 0 16px rgba(99,102,241,0.7); }
 }
 
 .cursor-blink {
   display: inline-block;
-  width: 6px;
-  height: 12px;
-  background: #6366f1;
+  width: 7px;
+  height: 14px;
+  background: linear-gradient(180deg, #818cf8, #6366f1);
   margin-left: 2px;
   vertical-align: text-bottom;
-  border-radius: 1px;
+  border-radius: 2px;
   animation: blink 1s step-end infinite;
 }
