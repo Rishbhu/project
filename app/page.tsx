@@ -11,61 +11,6 @@ const TONES: { value: Tone; label: string; descriptor: string }[] = [
   { value: "Bold", label: "Bold", descriptor: "Direct, no hedging." },
 ];
 
-interface Preset {
-  label: string;
-  subtitle: string;
-  companyName: string;
-  whatTheyDo: string;
-  culture: string;
-  jobTitle: string;
-  seniorityLevel: string;
-  keySkills: string;
-  tone: Tone;
-}
-
-const PRESETS: Preset[] = [
-  {
-    label: "PSVIEW",
-    subtitle: "AI agents for staffing",
-    companyName: "PSVIEW",
-    whatTheyDo:
-      "PSVIEW builds autonomous AI agents for staffing firms — agents that source, screen, and engage candidates end-to-end without manual recruiter involvement. The product replaces the workflow layer of a recruiting desk with AI that runs the full funnel at scale.",
-    culture:
-      "Small elite team, intense execution pace, extremely high ownership. Everyone builds, everyone ships. No process layers. Direct and honest communication is the norm.",
-    jobTitle: "Founding Engineer Intern",
-    seniorityLevel: "Early-career but unusually high-agency",
-    keySkills:
-      "TypeScript, React, Supabase, Postgres, Edge Functions, AI agents, prompt engineering, Claude Code, Cursor, full-stack",
-    tone: "Bold",
-  },
-  {
-    label: "Healthcare AI",
-    subtitle: "Clinical decision support",
-    companyName: "MedAI",
-    whatTheyDo:
-      "Building AI-powered clinical decision support tools that help physicians make faster, better-informed diagnoses. Models are trained on de-identified patient data and integrate directly into existing EHR systems.",
-    culture:
-      "Mission-driven, collaborative, and rigorous. We move fast but never at the expense of safety. Remote-friendly with quarterly in-person sprints.",
-    jobTitle: "ML Engineer",
-    seniorityLevel: "Senior",
-    keySkills: "Python, PyTorch, clinical NLP, FHIR/HL7, model deployment, MLOps, scikit-learn",
-    tone: "Professional",
-  },
-  {
-    label: "Luxury Fashion",
-    subtitle: "Couture meets culture",
-    companyName: "Maison Volta",
-    whatTheyDo:
-      "Luxury fashion house creating limited-edition collections at the intersection of couture craftsmanship and digital-native storytelling. Each piece is conceived as a cultural artifact — designed for resonance, not volume.",
-    culture:
-      "Aesthetic-driven, exacting, globally scattered team. We prize taste over tenure. Work is often ambiguous and always high-stakes. Ego is a dealbreaker.",
-    jobTitle: "Brand Creative Director",
-    seniorityLevel: "Senior",
-    keySkills:
-      "Campaign strategy, luxury brand positioning, creative direction, art direction, digital/physical integration, narrative design",
-    tone: "Bold",
-  },
-];
 
 const C = {
   card: "#ffffff",
@@ -159,12 +104,6 @@ export default function SetupPage() {
     router.push("/agent");
   }
 
-  function applyPreset(p: Preset) {
-    setForm({ companyName: p.companyName, whatTheyDo: p.whatTheyDo, culture: p.culture, jobTitle: p.jobTitle, seniorityLevel: p.seniorityLevel, keySkills: p.keySkills, tone: p.tone });
-    setErrors({});
-    setImportDone(false);
-  }
-
   function field(key: string, val: string) {
     setForm((f) => ({ ...f, [key]: val }));
     if (errors[key]) setErrors((e) => ({ ...e, [key]: "" }));
@@ -228,28 +167,6 @@ export default function SetupPage() {
           <p className="text-sm" style={{ color: C.textMuted, maxWidth: "26rem" }}>
             Give it your company, culture, and role. It builds its own identity and writes the outreach.
           </p>
-        </div>
-
-        {/* Demo presets */}
-        <div className="mb-4">
-          <p className="text-[10px] font-mono font-semibold uppercase tracking-widest mb-2.5 px-0.5" style={{ color: C.textMuted }}>
-            Load a demo preset
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {PRESETS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => applyPreset(p)}
-                className="flex flex-col items-start px-4 py-3.5 rounded-xl text-left transition-all duration-150 active:scale-[0.98]"
-                style={{ background: C.card, border: `1px solid ${C.border}`, boxShadow: C.shadowSm }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = C.indigoBorder; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = C.border; }}>
-                <span className="text-sm font-bold mb-0.5" style={{ color: C.text }}>{p.label}</span>
-                <span className="text-[11px] leading-snug" style={{ color: C.textMuted }}>{p.subtitle}</span>
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Import from company brief */}
