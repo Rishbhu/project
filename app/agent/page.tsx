@@ -16,32 +16,6 @@ interface CompanyContext {
   candidateProfile: { jobTitle: string; seniorityLevel: string; keySkills: string };
   tone: string;
 }
-interface AgentBrainFields {
-  hallucinationRisk: "Low" | "Medium" | "High";
-  missingFacts: string[];
-  knownFactsUsed: string[];
-  nextBestAction: string;
-  candidateStage: string;
-  candidateFitSignal: string;
-  candidateIntent: string;
-  candidateSentiment: string;
-  shouldQualifyOut: boolean;
-  isPromptInjection: boolean;
-  confidence: number;
-  signals: string[];
-  mainObjection: string;
-}
-interface AuditTestResult {
-  name: string;
-  key: string;
-  message: string;
-  description: string;
-  reply: string;
-  agentBrain: AgentBrainFields | null;
-  result: "pass" | "warning" | "fail";
-  explanation: string;
-  deduction: number;
-}
 
 const C = {
   bg: "#f1f3f9",
@@ -97,18 +71,6 @@ const UNKNOWN_FACTS = [
 
 const LOADING_STEPS = ["Reading company context...", "Forming identity...", "Building outreach sequence..."];
 
-const AUDIT_RESULT_STYLE = {
-  pass:    { bg: "#f0fdf4", border: "#a7f3d0", dot: "#10b981", text: "#065f46", label: "Pass" },
-  warning: { bg: "#fffbeb", border: "#fde68a", dot: "#d97706", text: "#92400e", label: "Warning" },
-  fail:    { bg: "#fef2f2", border: "#fecaca", dot: "#ef4444", text: "#7f1d1d", label: "Fail" },
-};
-
-function scoreColor(score: number) {
-  if (score >= 80) return { bg: "#f0fdf4", border: "#a7f3d0", text: "#065f46", label: "Audit passed" };
-  if (score >= 60) return { bg: "#fffbeb", border: "#fde68a", text: "#92400e", label: "Minor issues" };
-  if (score >= 40) return { bg: "#fff7ed", border: "#fed7aa", text: "#7c2d12", label: "Issues detected" };
-  return { bg: "#fef2f2", border: "#fecaca", text: "#7f1d1d", label: "Critical issues" };
-}
 
 export default function AgentPage() {
   const router = useRouter();
@@ -118,12 +80,6 @@ export default function AgentPage() {
   const [error, setError] = useState("");
   const [step, setStep] = useState(0);
   const [done, setDone] = useState<number[]>([]);
-
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditResults, setAuditResults] = useState<AuditTestResult[]>([]);
-  const [auditScore, setAuditScore] = useState<number | null>(null);
-  const [auditError, setAuditError] = useState("");
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("companyContext");
@@ -151,54 +107,6 @@ export default function AgentPage() {
 
     return () => clearInterval(iv);
   }, [router]);
-
-  async function runAudit() {
-    if (!cfg || !ctx) return;
-    setAuditLoading(true);
-    setAuditResults([]);
-    setAuditScore(null);
-    setAuditError("");
-    setExpandedIdx(null);
-
-    try {
-      const res = await fetch("/api/audit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentConfig: cfg, companyContext: ctx }),
-      });
-      if (!res.ok || !res.body) throw new Error("Audit request failed");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done: streamDone, value } = await reader.read();
-        if (streamDone) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const ev = JSON.parse(line.slice(6));
-            if (ev.type === "test_result") {
-              setAuditResults((prev) => [...prev, ev as AuditTestResult]);
-            } else if (ev.type === "complete") {
-              setAuditScore(ev.score as number);
-              setAuditLoading(false);
-            } else if (ev.type === "error") {
-              setAuditError(ev.message as string);
-              setAuditLoading(false);
-            }
-          } catch {}
-        }
-      }
-    } catch (err) {
-      setAuditError(err instanceof Error ? err.message : "Audit failed");
-      setAuditLoading(false);
-    }
-  }
 
   /* ── Loading ── */
   if (loading) return (
@@ -458,28 +366,10 @@ export default function AgentPage() {
           </div>
         </div>
 
-        {/* ── CTA Row ── */}
-        <div className="flex items-center gap-3 pt-3 pb-4">
-          <button
-            onClick={runAudit}
-            disabled={auditLoading}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all duration-150 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-            style={{ background: C.card, border: `1px solid ${C.border}`, color: C.textSub, boxShadow: C.shadowSm }}>
-            {auditLoading ? (
-              <>
-                <span className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin flex-shrink-0" />
-                Auditing...
-              </>
-            ) : (
-              <>
-                <span style={{ color: C.indigo }}>◈</span>
-                Run Agent Audit
-              </>
-            )}
-          </button>
-          <div className="flex-1" />
+        {/* ── CTA ── */}
+        <div className="pt-3 pb-12">
           <button onClick={() => router.push("/sandbox")}
-            className="group px-7 py-3.5 text-white font-bold text-sm rounded-xl transition-all duration-150 active:scale-[0.98] flex items-center gap-2.5"
+            className="group w-full py-4 text-white font-bold text-sm rounded-xl transition-all duration-150 active:scale-[0.98] flex items-center justify-center gap-2.5"
             style={{ background: "linear-gradient(135deg,#4f46e5,#6366f1)", boxShadow: "0 4px 16px rgba(99,102,241,0.35), 0 1px 4px rgba(99,102,241,0.2)" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 24px rgba(99,102,241,0.45), 0 2px 8px rgba(99,102,241,0.25)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(99,102,241,0.35), 0 1px 4px rgba(99,102,241,0.2)"; }}>
@@ -487,158 +377,6 @@ export default function AgentPage() {
             <span className="group-hover:translate-x-0.5 transition-transform duration-150">→</span>
           </button>
         </div>
-
-        {/* ── Audit Results ── */}
-        {(auditError || auditResults.length > 0) && (
-          <div className="space-y-4 pb-12 animate-fade-in">
-            <p className="text-[10px] font-mono font-semibold uppercase tracking-widest px-1" style={{ color: C.textMuted }}>
-              Audit results · {auditResults.length}/9 tests complete
-            </p>
-
-            {/* Score banner */}
-            {auditScore !== null && (() => {
-              const sc = scoreColor(auditScore);
-              return (
-                <div className="rounded-2xl p-5 flex items-center gap-5 flex-wrap"
-                  style={{ background: sc.bg, border: `1px solid ${sc.border}` }}>
-                  <div className="text-5xl font-black tabular-nums" style={{ color: sc.text }}>{auditScore}</div>
-                  <div>
-                    <p className="text-base font-bold mb-0.5" style={{ color: sc.text }}>Agent Readiness Score</p>
-                    <p className="text-sm" style={{ color: sc.text, opacity: 0.75 }}>{sc.label} — out of 100</p>
-                  </div>
-                  <div className="ml-auto flex gap-2 flex-wrap">
-                    {(["pass", "warning", "fail"] as const).map((r) => {
-                      const count = auditResults.filter((x) => x.result === r).length;
-                      if (count === 0) return null;
-                      const st = AUDIT_RESULT_STYLE[r];
-                      return (
-                        <div key={r} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                          style={{ background: st.bg, border: `1px solid ${st.border}` }}>
-                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: st.dot }} />
-                          <span className="font-semibold text-xs" style={{ color: st.text }}>{count} {st.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {auditError && (
-              <div className="rounded-xl px-5 py-4" style={{ background: "#fef2f2", border: "1px solid #fecaca" }}>
-                <p className="text-sm text-red-600 font-medium">{auditError}</p>
-              </div>
-            )}
-
-            {auditLoading && auditResults.length < 9 && (
-              <div className="rounded-xl px-5 py-3 flex items-center gap-3"
-                style={{ background: C.card, border: `1px solid ${C.border}` }}>
-                <span className="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 animate-spin"
-                  style={{ borderColor: C.indigoBorder, borderTopColor: C.indigo }} />
-                <span className="text-sm" style={{ color: C.textSub }}>
-                  Running test {auditResults.length + 1} of 9...
-                </span>
-              </div>
-            )}
-
-            {auditResults.map((r, i) => {
-              const st = AUDIT_RESULT_STYLE[r.result];
-              const isExpanded = expandedIdx === i;
-              return (
-                <div key={i} className="rounded-2xl overflow-hidden"
-                  style={{ background: C.card, border: `1px solid ${C.border}`, boxShadow: C.shadowSm }}>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedIdx(isExpanded ? null : i)}
-                    className="w-full flex items-start gap-4 px-5 py-4 text-left"
-                    style={{ background: isExpanded ? C.cardHeader : C.card }}>
-                    <div className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center"
-                      style={{ background: st.bg, border: `1px solid ${st.border}` }}>
-                      <span className="w-2 h-2 rounded-full" style={{ background: st.dot }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-sm font-semibold" style={{ color: C.text }}>{r.name}</span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                          style={{ background: st.bg, border: `1px solid ${st.border}`, color: st.text }}>
-                          {st.label}
-                        </span>
-                        {r.deduction > 0 && (
-                          <span className="text-[10px] font-mono text-red-500">−{r.deduction} pts</span>
-                        )}
-                      </div>
-                      <p className="text-xs leading-relaxed" style={{ color: C.textSub }}>{r.explanation}</p>
-                    </div>
-                    <span className="text-xs flex-shrink-0 mt-1 transition-transform duration-200"
-                      style={{ color: C.textMuted, transform: isExpanded ? "rotate(180deg)" : "none" }}>
-                      ↓
-                    </span>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="border-t" style={{ borderColor: C.borderSoft }}>
-                      <div className="px-5 py-4 border-b" style={{ borderColor: C.borderSoft }}>
-                        <p className="text-[10px] font-mono font-semibold uppercase tracking-widest mb-2" style={{ color: C.textMuted }}>Candidate message</p>
-                        <p className="text-sm italic" style={{ color: C.textSub }}>"{r.message}"</p>
-                        <p className="text-[11px] mt-1.5" style={{ color: C.textMuted }}>{r.description}</p>
-                      </div>
-                      {r.reply && (
-                        <div className="px-5 py-4 border-b" style={{ background: C.cardHeader, borderColor: C.borderSoft }}>
-                          <p className="text-[10px] font-mono font-semibold uppercase tracking-widest mb-2" style={{ color: C.textMuted }}>Agent reply</p>
-                          <p className="text-sm leading-relaxed" style={{ color: C.textSub }}>{r.reply}</p>
-                        </div>
-                      )}
-                      {r.agentBrain && (
-                        <div className="px-5 py-4">
-                          <p className="text-[10px] font-mono font-semibold uppercase tracking-widest mb-3" style={{ color: C.textMuted }}>Agent brain</p>
-                          <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-4">
-                            {[
-                              { label: "Stage",            value: r.agentBrain.candidateStage },
-                              { label: "Next action",      value: r.agentBrain.nextBestAction },
-                              { label: "Fit signal",       value: r.agentBrain.candidateFitSignal },
-                              { label: "Hallucination",    value: r.agentBrain.hallucinationRisk },
-                            ].map(({ label, value }) => (
-                              <div key={label}>
-                                <p className="text-[10px] font-mono uppercase tracking-wide mb-1" style={{ color: C.textMuted }}>{label}</p>
-                                <p className="text-xs font-medium" style={{ color: C.text }}>{value}</p>
-                              </div>
-                            ))}
-                          </div>
-                          {r.agentBrain.missingFacts.length > 0 && (
-                            <div className="mb-3">
-                              <p className="text-[10px] font-mono uppercase tracking-wide mb-1.5" style={{ color: C.textMuted }}>Missing facts flagged</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {r.agentBrain.missingFacts.map((f, fi) => (
-                                  <span key={fi} className="text-[11px] px-2 py-0.5 rounded-md"
-                                    style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c" }}>
-                                    {f}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {r.agentBrain.knownFactsUsed.length > 0 && (
-                            <div>
-                              <p className="text-[10px] font-mono uppercase tracking-wide mb-1.5" style={{ color: C.textMuted }}>Known facts used</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {r.agentBrain.knownFactsUsed.map((f, fi) => (
-                                  <span key={fi} className="text-[11px] px-2 py-0.5 rounded-md"
-                                    style={{ background: "#f0fdf4", border: "1px solid #a7f3d0", color: "#065f46" }}>
-                                    {f}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
 
       </div>
     </main>
