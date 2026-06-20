@@ -609,7 +609,12 @@ export default function SandboxPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversationHistory: history, agentConfig: cfg, companyContext: ctx }),
       });
-      const reader = res.body!.getReader();
+      if (!res.ok || !res.body) {
+        setMessages((prev) => [...prev, { role: "agent", content: "Connection failed. Please try again." }]);
+        setIsReplying(false);
+        return;
+      }
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       const currentTrace: ReActStep[] = [];
@@ -650,7 +655,14 @@ export default function SandboxPage() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
-  if (!cfg || !ctx) return null;
+  if (!cfg || !ctx) return (
+    <main className="min-h-screen flex items-center justify-center px-4">
+      <div className="text-center space-y-3">
+        <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: "#c7caef", borderTopColor: "#6366f1" }} />
+        <p className="text-sm" style={{ color: "#8891a8" }}>Loading session…</p>
+      </div>
+    </main>
+  );
 
   const agentReplies = messages.filter((m) => m.role === "agent").length;
   const toolCalls = agentCount * 3;
@@ -658,8 +670,8 @@ export default function SandboxPage() {
   return (
     <div className="h-screen flex overflow-hidden" style={{ background: C.chat }}>
 
-      {/* ── Sidebar ── */}
-      <div className="w-64 flex-shrink-0 flex flex-col overflow-hidden" style={{ background: C.sidebar, borderRight: `1px solid ${C.sidebarBorder}` }}>
+      {/* ── Sidebar — hidden on small screens ── */}
+      <div className="hidden lg:flex w-64 flex-shrink-0 flex-col overflow-hidden" style={{ background: C.sidebar, borderRight: `1px solid ${C.sidebarBorder}` }}>
 
         <div className="px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.sidebarBorder}` }}>
           <button onClick={() => router.push("/agent")} className="text-sm font-medium transition-colors"
@@ -714,9 +726,8 @@ export default function SandboxPage() {
         {/* Simulating */}
         <div className="px-4 py-3.5 flex-shrink-0" style={{ borderBottom: `1px solid ${C.sidebarBorder}` }}>
           <p className="text-[10px] font-mono font-semibold uppercase tracking-widest mb-2" style={{ color: C.textMuted }}>Simulating</p>
-          <p className="text-sm font-semibold mb-1" style={{ color: C.text }}>
-            {ctx.candidateProfile.seniorityLevel} {ctx.candidateProfile.jobTitle}
-          </p>
+          <p className="text-sm font-semibold mb-0.5" style={{ color: C.text }}>{ctx.candidateProfile.jobTitle}</p>
+          <p className="text-xs mb-1" style={{ color: C.textMuted }}>{ctx.candidateProfile.seniorityLevel}</p>
           <p className="text-xs leading-relaxed line-clamp-2" style={{ color: C.textMuted }}>{ctx.candidateProfile.keySkills}</p>
         </div>
 
@@ -781,12 +792,19 @@ export default function SandboxPage() {
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Header */}
-        <div className="px-6 py-4 flex items-center justify-between flex-shrink-0"
+        <div className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between flex-shrink-0"
           style={{ background: C.sidebar, borderBottom: `1px solid ${C.sidebarBorder}` }}>
           <div>
+            {/* Mobile: show back link + agent name */}
+            <div className="flex items-center gap-3 lg:hidden mb-0.5">
+              <button onClick={() => router.push("/agent")} className="text-xs font-medium" style={{ color: C.textMuted }}>← Config</button>
+              <span className="w-px h-3" style={{ background: C.border }} />
+              <span className="text-xs font-bold" style={{ color: C.text }}>{cfg.agentName}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+            </div>
             <p className="text-sm font-bold" style={{ color: C.text }}>Conversation Sandbox</p>
             <p className="text-xs" style={{ color: C.textMuted }}>
-              Dynamic ReAct Agent · {Object.keys(TOOL_META).length} tools · candidate state classification
+              Simulation only — no messages are sent · {Object.keys(TOOL_META).length} tools · dynamic candidate state
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -816,7 +834,7 @@ export default function SandboxPage() {
                     <button onClick={() => toggleTrace(i)} className="flex items-center gap-2 text-xs mb-1.5 transition-colors"
                       style={{ color: C.textMuted }}>
                       <span style={{ color: msg.traceOpen ? C.indigo : C.textMuted }}>{msg.traceOpen ? "▼" : "►"}</span>
-                      <span>Agent trace — {msg.trace.filter((s) => s.type === "action").length} tool call{msg.trace.filter((s) => s.type === "action").length !== 1 ? "s" : ""}</span>
+                      <span>Agent Brain — decision summary, not hidden chain-of-thought</span>
                       <div className="flex gap-0.5 ml-1">
                         {msg.trace.filter((s) => s.type === "action").map((s, j) => {
                           const m = s.tool ? TOOL_META[s.tool] : null;
