@@ -656,7 +656,7 @@ export default function SandboxPage() {
   }
 
   if (!cfg || !ctx) return (
-    <main className="min-h-screen flex items-center justify-center px-4">
+    <main className="light-page min-h-screen flex items-center justify-center px-4">
       <div className="text-center space-y-3">
         <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: "#c7caef", borderTopColor: "#6366f1" }} />
         <p className="text-sm" style={{ color: "#8891a8" }}>Loading session…</p>

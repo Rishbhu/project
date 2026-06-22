@@ -8,10 +8,13 @@
   html, body {
     height: 100%;
     font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
-    color: #0f1117;
+    background-color: #09090b;
+  }
+
+  .light-page {
     background-color: #f1f3f9;
-    background-image:
-      radial-gradient(ellipse 80% 40% at 50% -5%, rgba(99,102,241,0.07) 0%, transparent 60%);
+    background-image: radial-gradient(ellipse 80% 40% at 50% -5%, rgba(99,102,241,0.07) 0%, transparent 60%);
+    color: #0f1117;
   }
 
   ::selection { background: rgba(99,102,241,0.15); color: #0f1117; }

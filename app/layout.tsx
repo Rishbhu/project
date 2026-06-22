@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RecruiterAI — Intelligent Recruiting Agent",
-  description: "AI-powered recruiting agent that configures itself from company context",
+  title: "PSVIEW Operator — AI Recruiting Agent",
+  description: "Type the role once. PSVIEW handles the pipeline.",
 };
 
 export default function RootLayout({

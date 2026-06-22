@@ -110,7 +110,7 @@ export default function AgentPage() {
 
   /* ── Loading ── */
   if (loading) return (
-    <main className="min-h-screen flex items-center justify-center px-4">
+    <main className="light-page min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-8">
         <div>
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6"
@@ -156,7 +156,7 @@ export default function AgentPage() {
 
   /* ── Error ── */
   if (error) return (
-    <main className="min-h-screen flex items-center justify-center px-4">
+    <main className="light-page min-h-screen flex items-center justify-center px-4">
       <div className="text-center space-y-4">
         <div className="rounded-2xl px-6 py-5" style={{ background: C.card, border: "1px solid #fecaca", boxShadow: C.shadow }}>
           <p className="text-red-500 font-semibold mb-1">Configuration failed</p>
@@ -182,7 +182,7 @@ export default function AgentPage() {
   ] : [];
 
   return (
-    <main className="min-h-screen px-4 py-10">
+    <main className="light-page min-h-screen px-4 py-10">
       <div className="max-w-3xl mx-auto space-y-5 animate-fade-in">
 
         {/* Nav */}
